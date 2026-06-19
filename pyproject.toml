@@ -4,7 +4,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py312"
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [
@@ -16,7 +16,8 @@ select = [
     "UP",  # pyupgrade (upgrades syntax)
 ]
 ignore = [
-    "B904", # Allow raising exception without from in some contexts
+    "B904",   # Allow raising exception without from in some contexts
+    "UP042",  # StrEnum requires Python 3.11+; we support 3.10
 ]
 
 [tool.black]

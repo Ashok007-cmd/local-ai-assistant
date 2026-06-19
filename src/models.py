@@ -6,12 +6,12 @@ Used for resume optimization and mock interview workflows.
 from __future__ import annotations
 
 import json
-from enum import StrEnum
+from enum import Enum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class SkillCategory(StrEnum):
+class SkillCategory(str, Enum):
     TECHNICAL = "technical"
     SOFT_SKILL = "soft_skill"
     DOMAIN = "domain"
