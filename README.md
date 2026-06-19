@@ -1,7 +1,7 @@
 # Local AI Assistant — Offline Resume Optimizer & Mock Interviewer
 
-[![CI](https://github.com/Ashok007-cmd/local-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Ashok007-cmd/local-ai-assistant/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
+[![CI](https://github.com/Ashok007-cmd/local-ai-assistant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Ashok007-cmd/local-ai-assistant/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/Python-3.10%20|%203.11%20|%203.12-blue)](https://python.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688)](https://fastapi.tiangolo.com)
 
