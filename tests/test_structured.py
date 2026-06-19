@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
+from src.assistant import LLMClient, default_resume_fallback
 from src.models import (
     BulletPointImprovement,
     InterviewQuestion,
@@ -20,7 +21,7 @@ from src.models import (
     SkillGap,
     parse_llm_json_output,
 )
-from src.assistant import LLMClient, LLMResponse, default_resume_fallback
+
 
 @pytest.fixture(autouse=True)
 def clear_cache_before_each_test():
@@ -518,9 +519,11 @@ class TestFastAPIRoutes:
     """Verify endpoint routing, status codes, and mock integration in app.py."""
 
     def test_health_check_endpoint(self):
-        from fastapi.testclient import TestClient
-        from src.app import app
         from unittest.mock import AsyncMock
+
+        from fastapi.testclient import TestClient
+
+        from src.app import app
 
         client = TestClient(app)
 
@@ -543,6 +546,7 @@ class TestFastAPIRoutes:
 
     def test_benchmarks_endpoint_missing_file(self):
         from fastapi.testclient import TestClient
+
         from src.app import app
 
         client = TestClient(app)
@@ -553,10 +557,12 @@ class TestFastAPIRoutes:
             assert "not found" in response.json()["error"]
 
     def test_benchmarks_endpoint_valid(self):
-        from fastapi.testclient import TestClient
-        from src.app import app
-        from pathlib import Path
         import tempfile
+        from pathlib import Path
+
+        from fastapi.testclient import TestClient
+
+        from src.app import app
 
         client = TestClient(app)
 
@@ -594,8 +600,9 @@ class TestFastAPIRoutes:
 
     def test_serve_index_html(self):
         from fastapi.testclient import TestClient
+
         from src.app import app
-        
+
         client = TestClient(app)
         with patch("src.app.FileResponse") as mock_file_resp:
             mock_file_resp.return_value = MagicMock()
@@ -740,6 +747,7 @@ class TestConcurrencyControl:
 @pytest.fixture
 def client():
     from fastapi.testclient import TestClient
+
     from src.app import app
     return TestClient(app)
 

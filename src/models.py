@@ -6,13 +6,12 @@ Used for resume optimization and mock interview workflows.
 from __future__ import annotations
 
 import json
-from enum import Enum
-from typing import List, Optional
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class SkillCategory(str, Enum):
+class SkillCategory(StrEnum):
     TECHNICAL = "technical"
     SOFT_SKILL = "soft_skill"
     DOMAIN = "domain"
@@ -28,7 +27,7 @@ class SkillGap(BaseModel):
     importance: str = Field(
         ..., description="How critical this skill is for the target role"
     )
-    suggested_resource: Optional[str] = Field(
+    suggested_resource: str | None = Field(
         None, description="Suggested learning resource or course"
     )
 
@@ -46,16 +45,16 @@ class BulletPointImprovement(BaseModel):
 class SkillAnalysis(BaseModel):
     """Structured analysis of skills from a resume."""
 
-    missing_skills: List[SkillGap] = Field(
+    missing_skills: list[SkillGap] = Field(
         ..., description="Skills missing or underdeveloped for the target role"
     )
     matching_score: float = Field(
         ..., ge=0.0, le=100.0, description="Overall match score (0–100)"
     )
-    bullet_point_improvements: List[BulletPointImprovement] = Field(
+    bullet_point_improvements: list[BulletPointImprovement] = Field(
         ..., description="Suggested improvements for specific bullet points"
     )
-    strengths: List[str] = Field(
+    strengths: list[str] = Field(
         ..., description="Key strengths identified in the resume"
     )
 
@@ -82,7 +81,7 @@ class InterviewQuestion(BaseModel):
     target_skill: str = Field(
         ..., description="The skill or competency this question targets"
     )
-    ideal_answer_keywords: List[str] = Field(
+    ideal_answer_keywords: list[str] = Field(
         ...,
         description="Keywords or concepts a strong answer should contain",
     )
@@ -92,12 +91,12 @@ class InterviewFeedback(BaseModel):
     """Feedback on a candidate's interview answer."""
 
     score: float = Field(..., ge=0.0, le=10.0, description="Overall score (0–10)")
-    strengths: List[str] = Field(..., description="What the answer did well")
-    weaknesses: List[str] = Field(..., description="Areas for improvement")
-    suggested_answer_framework: Optional[str] = Field(
+    strengths: list[str] = Field(..., description="What the answer did well")
+    weaknesses: list[str] = Field(..., description="Areas for improvement")
+    suggested_answer_framework: str | None = Field(
         None, description="e.g., STAR method outline for this question"
     )
-    missed_keywords: List[str] = Field(
+    missed_keywords: list[str] = Field(
         ..., description="Important keywords the answer missed"
     )
 
@@ -112,15 +111,15 @@ class InterviewFeedback(BaseModel):
 class ResumeAnalysisResult(BaseModel):
     """Top-level container for a full resume analysis."""
 
-    candidate_name: Optional[str] = Field(None, description="Extracted candidate name")
+    candidate_name: str | None = Field(None, description="Extracted candidate name")
     target_role: str = Field(..., description="The role the resume targets")
-    years_experience: Optional[float] = Field(
+    years_experience: float | None = Field(
         None, ge=0.0, description="Estimated years of professional experience"
     )
     skill_analysis: SkillAnalysis = Field(
         ..., description="Detailed skill analysis"
     )
-    format_issues: List[str] = Field(
+    format_issues: list[str] = Field(
         default_factory=list, description="Formatting or structure issues detected"
     )
     overall_recommendation: str = Field(
