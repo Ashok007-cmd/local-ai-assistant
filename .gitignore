@@ -1,0 +1,43 @@
+# Python cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# Environment Variables & Secrets
+.env
+.env.local
+
+# Databases & Cache files
+*.db
+*.sqlite3
+benchmarks/cache.db
+benchmarks/rag.db
+
+# Scratch / exploratory files (not for distribution)
+scratch/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp

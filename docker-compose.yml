@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  assistant-api:
+    build: .
+    container_name: local-ai-assistant-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - DEFAULT_MODEL=llama3.2:3b
+      - CACHE_DB_PATH=/app/benchmarks/cache.db
+      - RAG_DB_PATH=/app/benchmarks/rag.db
+      - CACHE_TTL_HOURS=24
+      - CORS_ORIGINS=http://localhost:8000,http://127.0.0.1:8000
+    volumes:
+      - assistant-cache:/app/benchmarks
+    # Allow the container to reach Ollama running on the host machine (with GPU support)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+volumes:
+  assistant-cache:
+    driver: local

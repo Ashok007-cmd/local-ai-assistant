@@ -1,0 +1,50 @@
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Warmup complete for llama3.2:3b: 55.1 tok/s
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 51.8 tok/s, TTFT=0.75s, VRAM=2MB, RAM=0MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 51.6 tok/s, TTFT=0.02s, VRAM=0MB, RAM=0MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 51.3 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 50.0 tok/s, TTFT=1.59s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 49.6 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 49.3 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 49.9 tok/s, TTFT=0.24s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 49.6 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 49.4 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 48.8 tok/s, TTFT=1.59s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 49.0 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 48.9 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 47.2 tok/s, TTFT=3.94s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 47.2 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark llama3.2:3b | benchmark: 47.1 tok/s, TTFT=0.02s, VRAM=0MB, RAM=1MB
+Running warmup for llama3.2:3b...
+  Run 1/3: resume_analysis_short
+  Run 2/3: resume_analysis_short
+  Run 3/3: resume_analysis_short
+  Run 1/3: resume_analysis_full
+  Run 2/3: resume_analysis_full
+  Run 3/3: resume_analysis_full
+  Run 1/3: interview_question
+  Run 2/3: interview_question
+  Run 3/3: interview_question
+  Run 1/3: json_extraction
+  Run 2/3: json_extraction
+  Run 3/3: json_extraction
+  Run 1/3: long_context
+  Run 2/3: long_context
+  Run 3/3: long_context
+Model llama3.2:3b: 15/15 runs successful, avg 49.4 tok/s
+Saved to benchmarks/results_llama3.2_3b.csv

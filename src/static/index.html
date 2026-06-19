@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Private, offline AI resume optimizer & mock interviewer dashboard powered by local Small Language Models (SLMs).">
+    <title>Local AI Assistant — Offline SLM Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- PDF.js Client-side Parser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
+
+</head>
+<body>
+    <div class="background-radial-glow"></div>
+    
+    <header class="app-header">
+        <div class="header-logo">
+            <span class="logo-icon">✦</span>
+            <h1 data-i18n="app_title">Local AI Assistant</h1>
+            <span class="badge">Offline SLM</span>
+        </div>
+        
+        <div class="header-controls">
+            <div class="ollama-status-container">
+                <span class="status-dot-pulse" id="status-dot"></span>
+                <span class="status-text" id="status-text">Checking Ollama...</span>
+            </div>
+            
+            <div class="model-select-wrapper">
+                <label for="global-model-select" data-i18n="active_model">Active Model:</label>
+                <select id="global-model-select" class="modern-select">
+                    <option value="llama3.2:3b" selected>Llama 3.2 (3B)</option>
+                    <option value="qwen2.5:3b">Qwen 2.5 (3B)</option>
+                    <option value="gemma3:4b">Gemma 3 (4B)</option>
+                    <option value="phi4-mini:latest">Phi 4 Mini (3.8B)</option>
+                    <option value="qwen2.5:7b">Qwen 2.5 (7B)</option>
+                    <option value="mistral:7b">Mistral (7B)</option>
+                </select>
+            </div>
+
+            <div class="model-select-wrapper">
+                <label for="global-lang-select" data-i18n="select_language">Language:</label>
+                <select id="global-lang-select" class="modern-select" onchange="changeLanguage(this.value)">
+                    <option value="english" selected>English</option>
+                    <option value="spanish">Español</option>
+                    <option value="german">Deutsch</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main class="dashboard-container">
+        <!-- Sidebar Navigation -->
+        <aside class="dashboard-sidebar">
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" id="nav-btn-resume" onclick="switchTab('resume')">
+                    <span class="nav-icon">📄</span>
+                    <span class="nav-label" data-i18n="nav_resume">Resume Optimizer</span>
+                </button>
+                <button class="nav-btn" id="nav-btn-interview" onclick="switchTab('interview')">
+                    <span class="nav-icon">💬</span>
+                    <span class="nav-label" data-i18n="nav_interview">Mock Interviewer</span>
+                </button>
+                <button class="nav-btn" id="nav-btn-benchmarks" onclick="switchTab('benchmarks')">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label" data-i18n="nav_benchmarks">Model Benchmarks</span>
+                </button>
+                <button class="nav-btn" id="nav-btn-history" onclick="switchTab('history')">
+                    <span class="nav-icon">📜</span>
+                    <span class="nav-label" data-i18n="nav_history">Session History</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <p data-i18n="sidebar_footer">Private & secure. No data leaves your machine.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <section class="dashboard-content">
+            
+            <!-- RESUME TAB -->
+            <div class="tab-pane active" id="tab-resume">
+                <div class="pane-header">
+                    <h2 data-i18n="resume_header_title">Resume Optimization Dashboard</h2>
+                    <p data-i18n="resume_header_desc">Analyze your resume against a target role to find skill gaps and get bulletproof re-writes.</p>
+                </div>
+
+                <div id="ollama-warning-resume" class="connection-warning-card hidden">
+                    <h4>⚠️ Ollama Connection Error</h4>
+                    <p>
+                        <span>Local AI Assistant cannot establish connection with Ollama on your machine. Make sure Ollama is running (e.g. run <code>ollama serve</code>).</span>
+                        <button class="btn-retry-connection" onclick="checkOllamaHealth()">Retry Connection</button>
+                    </p>
+                </div>
+
+
+                <div class="resume-grid">
+                    <!-- Input Card -->
+                    <div class="glass-card input-card">
+                        <h3 data-i18n="resume_settings_title">Analysis Settings</h3>
+                        
+                        <div class="form-group">
+                            <label for="resume-target-role" data-i18n="target_role">Target Role</label>
+                            <input type="text" id="resume-target-role" placeholder="e.g., Senior Software Engineer" value="Senior Software Engineer" data-i18n="target_role">
+                        </div>
+
+                        <div class="form-group">
+                            <label data-i18n="upload_resume">Upload Resume PDF</label>
+                            <div class="pdf-upload-zone" id="pdf-upload-zone" onclick="document.getElementById('pdf-file-input').click()">
+                                <span class="upload-icon">📂</span>
+                                <span class="upload-text" data-i18n="upload_drag_drop">Click to upload or drag & drop PDF</span>
+                                <span class="upload-filename" id="pdf-filename"></span>
+                                <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;" onchange="handlePDFUpload(event)">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <div class="label-row">
+                                <label for="resume-text" data-i18n="resume_plain_text">Resume Plain Text</label>
+                                <button class="text-btn" onclick="loadSampleResume()" data-i18n="load_sample_resume">Load Sample Resume</button>
+                            </div>
+                            <textarea id="resume-text" placeholder="Paste your resume here (minimum 50 characters)..." data-i18n="resume_plain_text"></textarea>
+                        </div>
+
+                        <button id="btn-analyze-resume" class="btn-primary" onclick="triggerResumeAnalysis()">
+                            <span class="btn-text" data-i18n="optimize_resume">Optimize Resume</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+
+                    <!-- Results Column -->
+                    <div class="results-column">
+                        <!-- Loading State -->
+                        <div id="resume-loading" class="glass-card state-card hidden">
+                            <div class="spinner-large"></div>
+                            <h4 data-i18n="analyzing_resume">Analyzing Resume...</h4>
+                            <p data-i18n="querying_slm">Querying local SLM. Structured validation loop in progress.</p>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" id="resume-progress-fill"></div>
+                            </div>
+                            <p class="micro-status" id="resume-micro-status">Initializing model...</p>
+                        </div>
+
+                        <!-- Initial/Empty State -->
+                        <div id="resume-empty-state" class="glass-card state-card">
+                            <span class="state-icon">📝</span>
+                            <h4 data-i18n="no_analysis_completed">No Analysis Completed</h4>
+                            <p data-i18n="fill_settings_resume">Fill in the settings and click "Optimize Resume" to begin. The offline assistant will process the text locally.</p>
+                        </div>
+
+                        <!-- Results View -->
+                        <div id="resume-results" class="hidden-wrapper hidden">
+                            
+                            <!-- Overview KPI Row -->
+                            <div class="kpi-row">
+                                <div class="glass-card kpi-card match-score-card">
+                                    <h4 data-i18n="match_score">Match Score</h4>
+                                    <div class="radial-progress-wrapper">
+                                        <svg viewBox="0 0 36 36" class="circular-chart">
+                                            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                            <path class="circle" id="score-circle" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                            <text x="18" y="20.35" class="percentage" id="score-text">0%</text>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="kpi-column">
+                                    <div class="glass-card kpi-card">
+                                        <h4 data-i18n="candidate_name">Candidate Name</h4>
+                                        <p class="kpi-val" id="res-candidate-name">—</p>
+                                    </div>
+                                    <div class="glass-card kpi-card">
+                                        <h4 data-i18n="est_experience">Est. Experience</h4>
+                                        <p class="kpi-val" id="res-experience">—</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Strengths & Recommendations -->
+                            <div class="two-col-row">
+                                <div class="glass-card flex-1">
+                                    <h3 data-i18n="key_strengths">Key Strengths</h3>
+                                    <ul class="strength-list" id="res-strengths"></ul>
+                                </div>
+                                <div class="glass-card flex-1">
+                                    <h3 data-i18n="recommendation">Recommendation</h3>
+                                    <p id="res-recommendation" class="recommendation-text"></p>
+                                </div>
+                            </div>
+
+                            <!-- Missing Skills / Gaps -->
+                            <div class="glass-card">
+                                <h3 data-i18n="identified_skill_gaps">Identified Skill Gaps</h3>
+                                <div class="table-responsive">
+                                    <table class="modern-table">
+                                        <thead>
+                                            <tr>
+                                                <th data-i18n="table_skill">Skill</th>
+                                                <th data-i18n="table_category">Category</th>
+                                                <th data-i18n="table_importance">Importance</th>
+                                                <th data-i18n="table_suggested_resource">Suggested Resource</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="res-skill-gaps"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Bullet Point Rewrite Suggestions -->
+                            <div class="glass-card">
+                                <h3 data-i18n="resume_bullet_rewrites">Resume Bullet Point Re-writes</h3>
+                                <p class="section-subtitle" data-i18n="section_subtitle_rewrite">Side-by-side suggestions to highlight achievements and quantify impact.</p>
+                                <div class="rewrite-container" id="res-bullet-rewrites"></div>
+                            </div>
+
+                            <!-- Format Issues -->
+                            <div id="format-issues-card" class="glass-card hidden">
+                                <h3 data-i18n="detected_format_issues">Detected Format & Structure Issues</h3>
+                                <ul class="warning-list" id="res-format-issues"></ul>
+                            </div>
+
+                            <!-- Performance Stats -->
+                            <div class="glass-card perf-card">
+                                <h4 data-i18n="performance_metrics">Performance Metrics (This run)</h4>
+                                <div class="perf-stats-grid">
+                                    <div><strong data-i18n="model_used">Model Used:</strong> <span id="perf-model">—</span></div>
+                                    <div><strong data-i18n="retries">Retries:</strong> <span id="perf-attempts">—</span></div>
+                                    <div><strong data-i18n="errors_encountered">Errors Encountered:</strong> <span id="perf-errors">—</span></div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERVIEW TAB -->
+            <div class="tab-pane" id="tab-interview">
+                <div class="pane-header">
+                    <h2 data-i18n="interview_header_title">Mock Interview Simulator</h2>
+                    <p data-i18n="interview_header_desc">Practice answering realistic behavioral and technical interview questions based on your resume.</p>
+                </div>
+
+                <div id="ollama-warning-interview" class="connection-warning-card hidden">
+                    <h4>⚠️ Ollama Connection Error</h4>
+                    <p>
+                        <span>Local AI Assistant cannot establish connection with Ollama on your machine. Make sure Ollama is running (e.g. run <code>ollama serve</code>).</span>
+                        <button class="btn-retry-connection" onclick="checkOllamaHealth()">Retry Connection</button>
+                    </p>
+                </div>
+
+
+                <div class="interview-layout">
+                    <!-- Session Controls (Sidebar-like) -->
+                    <div class="glass-card session-card">
+                        <h3 data-i18n="interview_settings">Interview Settings</h3>
+                        <p class="card-desc" data-i18n="interview_settings_desc">The assistant will customize questions based on the resume loaded in the Resume Optimizer tab.</p>
+                        
+                        <div class="form-group">
+                            <label for="interview-target-role" data-i18n="target_role">Target Role</label>
+                            <input type="text" id="interview-target-role" placeholder="e.g., Senior Software Engineer" value="Senior Software Engineer" data-i18n="target_role">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="toggle-container">
+                                <input type="checkbox" id="toggle-read-aloud" checked>
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label" data-i18n="toggle_read_aloud">Read Questions Aloud</span>
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="toggle-container">
+                                <input type="checkbox" id="toggle-voice-mode" onchange="toggleVoiceModeUI(this.checked)">
+                                <span class="toggle-slider"></span>
+                                <span class="toggle-label" data-i18n="toggle_voice_mode">Voice Answer Mode</span>
+                            </label>
+                        </div>
+
+                        <button id="btn-start-interview" class="btn-primary" onclick="startInterview()">
+                            <span class="btn-text" data-i18n="generate_question">Generate Question</span>
+                            <span class="spinner hidden"></span>
+                        </button>
+                    </div>
+
+                    <!-- Main Chat Panel -->
+                    <div class="interview-chat-panel">
+                        <!-- Loading Question -->
+                        <div id="interview-loading" class="glass-card state-card hidden">
+                            <div class="spinner-large"></div>
+                            <h4 data-i18n="generating_question">Generating Tailored Question...</h4>
+                            <p data-i18n="generating_question_desc">Model is parsing resume content to formulate a custom behavioral or technical question.</p>
+                        </div>
+
+                        <!-- Empty State -->
+                        <div id="interview-empty-state" class="glass-card state-card">
+                            <span class="state-icon">🎙️</span>
+                            <h4 data-i18n="ready_for_interview">Ready for Interview</h4>
+                            <p data-i18n="ready_for_interview_desc">Click "Generate Question" to start a custom mock interview. You can answer using the text field to receive detailed coaching feedback.</p>
+                        </div>
+
+                        <!-- Question and Answer Box -->
+                        <div id="interview-active-question" class="hidden-wrapper hidden">
+                            <div class="glass-card question-box">
+                                <div class="question-header">
+                                    <span class="badge difficulty-badge" id="int-difficulty">Medium</span>
+                                    <span class="badge type-badge" id="int-type">Behavioral</span>
+                                    <span class="badge skill-badge" id="int-skill">Target Skill: Leadership</span>
+                                </div>
+                                <h3 id="int-question-text">Describe a time you had to resolve a conflict within your engineering team.</h3>
+                            </div>
+
+                            <div class="glass-card answer-box">
+                                <div class="form-group">
+                                    <div class="label-row">
+                                        <label for="interview-answer" data-i18n="your_answer">Your Answer</label>
+                                        <button id="btn-mic" class="mic-btn hidden" onclick="toggleSpeechRecognition()">
+                                            <span class="mic-icon">🎙️</span>
+                                            <span class="mic-text" id="mic-text" data-i18n="speak_answer">Speak Answer</span>
+                                        </button>
+                                    </div>
+                                    <textarea id="interview-answer" placeholder="Type your answer here (minimum 10 characters)..." data-i18n="your_answer"></textarea>
+                                </div>
+                                <div class="button-row">
+                                    <button id="btn-submit-answer" class="btn-primary" onclick="submitInterviewAnswer()">
+                                        <span class="btn-text" data-i18n="submit_answer">Submit Answer for Feedback</span>
+                                        <span class="spinner hidden"></span>
+                                    </button>
+                                    <button class="btn-secondary" onclick="startInterview()" data-i18n="skip_question">Skip Question</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Streaming Feedback View -->
+                        <div id="interview-streaming-view" class="glass-card hidden">
+                            <h3 data-i18n="realtime_coach_feedback">Real-time AI Coach Feedback</h3>
+                            <div class="streaming-content-box" id="int-streaming-text" style="font-size: 0.95rem; line-height: 1.6; min-height: 100px; max-height: 300px; overflow-y: auto; margin: 1rem 0; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-glass);">
+                                <span class="streaming-loading-indicator" data-i18n="streaming_placeholder">Analyzing answer and formulating feedback...</span>
+                            </div>
+                            <div class="progress-bar-container" style="width: 100%; margin-top: 1rem;">
+                                <div class="progress-bar-fill" style="animation: pulse-glow 1.5s infinite ease-in-out; width: 100%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Feedback results -->
+                        <div id="interview-feedback-view" class="hidden-wrapper hidden">
+                            <div class="glass-card feedback-header-card">
+                                <h3 data-i18n="interview_coaching_feedback">Interview Coaching Feedback</h3>
+                                
+                                <div class="score-display-wrapper">
+                                    <div class="feedback-score-radial">
+                                        <span class="score-num" id="feed-score">0.0</span>
+                                        <span class="score-den">/ 10</span>
+                                    </div>
+                                    <div class="score-verdict">
+                                        <h4 id="feed-verdict-title">Strong Answer</h4>
+                                        <p>You covered key areas, but missed some crucial keywords. Read the details below.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="two-col-row">
+                                <div class="glass-card flex-1 border-green">
+                                    <h4 class="green-text" data-i18n="key_strengths_bullet">✓ Key Strengths</h4>
+                                    <ul class="strength-list" id="feed-strengths"></ul>
+                                </div>
+                                <div class="glass-card flex-1 border-red">
+                                    <h4 class="red-text" data-i18n="areas_to_improve">✗ Areas to Improve</h4>
+                                    <ul class="warning-list" id="feed-weaknesses"></ul>
+                                </div>
+                            </div>
+
+                            <!-- Keywords Coverage -->
+                            <div class="glass-card">
+                                <h3 data-i18n="keyword_analysis">Keyword Analysis</h3>
+                                <p class="section-subtitle" data-i18n="keyword_analysis_desc">Evaluating coverage of core concepts recommended for this question.</p>
+                                <div class="keyword-analysis-grid">
+                                    <div>
+                                        <h4 class="green-text" data-i18n="covered_keywords">Covered Keywords</h4>
+                                        <div class="pills-container" id="feed-covered-keywords">
+                                            <span class="pill-green">None</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 class="red-text" data-i18n="missed_keywords_label">Missed Keywords</h4>
+                                        <div class="pills-container" id="feed-missed-keywords">
+                                            <span class="pill-red">None</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Suggested Framework -->
+                            <div class="glass-card border-blue" id="feed-framework-card">
+                                <h3 class="blue-text" data-i18n="suggested_framework_label">Suggested Answer Framework (Coaching Advice)</h3>
+                                <p id="feed-framework" class="framework-text"></p>
+                            </div>
+
+                            <button class="btn-primary" onclick="startInterview()" data-i18n="try_another_question">Try Another Question</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- HISTORY TAB -->
+            <div class="tab-pane" id="tab-history">
+                <div class="pane-header">
+                    <h2 data-i18n="history_header_title">Session History</h2>
+                    <p data-i18n="history_header_desc">Review your past resume optimizations and mock interview practice sessions stored locally on your machine.</p>
+                </div>
+
+                <div class="history-layout">
+                    <div class="two-col-row">
+                        <!-- Resume History List -->
+                        <div class="glass-card flex-1">
+                            <h3 data-i18n="resume_history_title">Resume Optimization History</h3>
+                            <div class="history-list-container" id="resume-history-list" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;">
+                                <p class="text-muted">No saved resume analyses yet.</p>
+                            </div>
+                        </div>
+
+                        <!-- Interview History List -->
+                        <div class="glass-card flex-1">
+                            <h3 data-i18n="interview_history_title">Interview Practice History</h3>
+                            <div class="history-list-container" id="interview-history-list" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;">
+                                <p class="text-muted">No saved interview sessions yet.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BENCHMARKS TAB -->
+            <div class="tab-pane" id="tab-benchmarks">
+                <div class="pane-header">
+                    <h2 data-i18n="benchmarks_header_title">Offline SLM Inference Benchmarks</h2>
+                    <p data-i18n="benchmarks_header_desc">Compare performance metrics for 3B, 4B, and 7B parameter models benchmarked on the system's hardware.</p>
+                </div>
+
+                <div class="benchmarks-layout">
+                    <!-- Summary Table -->
+                    <div class="glass-card">
+                        <h3 data-i18n="model_comparison_title">Model Comparison Summary</h3>
+                        <div class="table-responsive">
+                            <table class="modern-table" id="benchmark-summary-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="table_hdr_model">Model</th>
+                                        <th data-i18n="table_hdr_speed">Average speed</th>
+                                        <th data-i18n="table_hdr_ttft">Avg TTFT</th>
+                                        <th data-i18n="table_hdr_vram">VRAM usage</th>
+                                        <th data-i18n="table_hdr_ram">RAM usage</th>
+                                        <th data-i18n="table_hdr_compliance">Compliance Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated dynamically -->
+                                    <tr class="table-placeholder"><td colspan="6" data-i18n="benchmarks_loading">Loading benchmark data...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid (CSS Bars) -->
+                    <div class="charts-grid">
+                        <div class="glass-card chart-card">
+                            <h3 data-i18n="chart_tps_title">Generation Speed (Tokens/Second)</h3>
+                            <p class="chart-subtitle" data-i18n="chart_tps_desc">Higher is better. Measures token production throughput.</p>
+                            <div class="bar-chart-container" id="chart-tps">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <h3 data-i18n="chart_ttft_title">Latency / Time-To-First-Token (TTFT)</h3>
+                            <p class="chart-subtitle" data-i18n="chart_ttft_desc">Lower is better. Measures response latency for cold prompts.</p>
+                            <div class="bar-chart-container" id="chart-ttft">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <h3 data-i18n="chart_mem_title">Memory Footprint (VRAM vs RAM)</h3>
+                            <p class="chart-subtitle" data-i18n="chart_mem_desc">Model weights loaded in GPU VRAM vs fallback to CPU RAM.</p>
+                            <div class="bar-chart-container" id="chart-memory">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+
+                        <div class="glass-card chart-card">
+                            <h3 data-i18n="chart_comp_title">JSON Adherence Compliance Rate</h3>
+                            <p class="chart-subtitle" data-i18n="chart_comp_desc">Percentage of runs parsing successfully on first attempt.</p>
+                            <div class="bar-chart-container" id="chart-compliance">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <footer class="app-footer">
+        <p data-i18n="app_footer_text">Local AI Assistant — Pair Programming with Antigravity | CUDA Powered Offline Assistant</p>
+    </footer>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

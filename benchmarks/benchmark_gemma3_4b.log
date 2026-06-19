@@ -1,0 +1,50 @@
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Warmup complete for gemma3:4b: 25.9 tok/s
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.6 tok/s, TTFT=1.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.8 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.8 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.6 tok/s, TTFT=1.82s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.6 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.7 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 24.0 tok/s, TTFT=0.37s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 24.0 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 24.0 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.7 tok/s, TTFT=1.83s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.7 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.6 tok/s, TTFT=0.04s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.0 tok/s, TTFT=4.97s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 23.0 tok/s, TTFT=4.90s, VRAM=0MB, RAM=1MB
+INFO | HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+INFO | Benchmark gemma3:4b | benchmark: 22.7 tok/s, TTFT=4.91s, VRAM=0MB, RAM=1MB
+Running warmup for gemma3:4b...
+  Run 1/3: resume_analysis_short
+  Run 2/3: resume_analysis_short
+  Run 3/3: resume_analysis_short
+  Run 1/3: resume_analysis_full
+  Run 2/3: resume_analysis_full
+  Run 3/3: resume_analysis_full
+  Run 1/3: interview_question
+  Run 2/3: interview_question
+  Run 3/3: interview_question
+  Run 1/3: json_extraction
+  Run 2/3: json_extraction
+  Run 3/3: json_extraction
+  Run 1/3: long_context
+  Run 2/3: long_context
+  Run 3/3: long_context
+Model gemma3:4b: 15/15 runs successful, avg 23.6 tok/s
+Saved to benchmarks/results_gemma3_4b.csv
