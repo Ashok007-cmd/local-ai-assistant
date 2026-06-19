@@ -6,7 +6,6 @@ Loads settings from environment variables with sensible defaults.
 from __future__ import annotations
 
 import os
-from pathlib import Path
 
 
 class Settings:
@@ -29,7 +28,13 @@ class Settings:
 
     # Security settings
     CORS_ORIGINS: list[str] = [
-        origin.strip() for origin in os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000").split(",") if origin.strip()
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://127.0.0.1:3000,"
+            "http://localhost:8000,http://127.0.0.1:8000",
+        ).split(",")
+        if origin.strip()
     ]
     MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", str(2 * 1024 * 1024)))
 

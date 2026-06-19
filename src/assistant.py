@@ -10,13 +10,14 @@ import json
 import logging
 import random
 import time
-from typing import Any, Callable, Type, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 import httpx
 from pydantic import BaseModel, ValidationError
 
-from src.config import settings
 from src.cache import response_cache
+from src.config import settings
 from src.models import ResumeAnalysisResult, parse_llm_json_output
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ async def close_async_client() -> None:
 def resolve_schema_refs(schema: dict) -> dict:
     """Recursively expand $ref references using definitions in $defs."""
     defs = schema.get("$defs", {})
-    
+
     def resolve(item: Any) -> Any:
         if isinstance(item, dict):
             if "$ref" in item:
@@ -70,7 +71,7 @@ def resolve_schema_refs(schema: dict) -> dict:
 def convert_to_gemini_schema(schema: dict) -> dict:
     """Convert standard JSON Schema to Gemini-compatible schema (uppercase types, resolved refs)."""
     resolved = resolve_schema_refs(schema)
-    
+
     def clean(item: Any) -> Any:
         if isinstance(item, dict):
             if "anyOf" in item:
@@ -94,7 +95,7 @@ def convert_to_gemini_schema(schema: dict) -> dict:
         elif isinstance(item, list):
             return [clean(i) for i in item]
         return item
-        
+
     return clean(resolved)
 
 
@@ -202,7 +203,7 @@ class LLMClient:
         self,
         prompt: str,
         system_prompt: str | None = None,
-        schema: Type[T] | None = None,
+        schema: type[T] | None = None,
     ) -> str:
         """Send a prompt to the Google Gemini API synchronously."""
         if not settings.GEMINI_API_KEY:
@@ -213,38 +214,38 @@ class LLMClient:
             model_name = f"models/{model_name}"
 
         url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
-        
+
         contents = [{
             "role": "user",
             "parts": [{"text": prompt}]
         }]
-        
+
         payload: dict[str, Any] = {
             "contents": contents,
         }
-        
+
         if system_prompt:
             payload["systemInstruction"] = {
                 "parts": [{"text": system_prompt}]
             }
-            
+
         generation_config: dict[str, Any] = {
             "temperature": self.temperature,
         }
-        
+
         if schema:
             generation_config["responseMimeType"] = "application/json"
             pydantic_schema = schema.model_json_schema()
             gemini_schema = convert_to_gemini_schema(pydantic_schema)
             generation_config["responseSchema"] = gemini_schema
-            
+
         payload["generationConfig"] = generation_config
-        
+
         with httpx.Client(timeout=self.timeout) as client:
             response = client.post(url, json=payload)
             response.raise_for_status()
             result = response.json()
-            
+
         try:
             candidates = result.get("candidates", [])
             if not candidates:
@@ -260,7 +261,7 @@ class LLMClient:
     def generate_structured(
         self,
         prompt: str,
-        schema: Type[T],
+        schema: type[T],
         system_prompt: str | None = None,
         fallback_factory: Callable[[], T] | None = None,
     ) -> LLMResponse:
@@ -289,7 +290,10 @@ class LLMClient:
         # Check if Gemini model
         if self.model.startswith("gemini-"):
             for attempt in range(1, self.max_retries + 1):
-                logger.info("Gemini attempt %d/%d for model=%s schema=%s", attempt, self.max_retries, self.model, schema.__name__)
+                logger.info(
+                    "Gemini attempt %d/%d for model=%s schema=%s",
+                    attempt, self.max_retries, self.model, schema.__name__,
+                )
                 try:
                     last_raw = self._query_gemini(prompt, system_prompt=system_prompt, schema=schema)
                 except Exception as e:
@@ -447,7 +451,7 @@ class LLMClient:
     def generate_structured_chat(
         self,
         messages: list[dict[str, str]],
-        schema: Type[T],
+        schema: type[T],
         fallback_factory: Callable[[], T] | None = None,
     ) -> LLMResponse:
         """Chat-format version of generate_structured."""
@@ -551,7 +555,9 @@ class LLMClient:
     # Asynchronous methods (Optimized for production event-loop stability)
     # ---------------------------------------------------------------------------
 
-    async def _query_ollama_async(self, prompt: str, system_prompt: str | None = None, format: str | None = None) -> str:
+    async def _query_ollama_async(
+        self, prompt: str, system_prompt: str | None = None, format: str | None = None
+    ) -> str:
         """Send a prompt to Ollama's /api/generate endpoint asynchronously."""
         payload: dict[str, Any] = {
             "model": self.model,
@@ -602,7 +608,7 @@ class LLMClient:
         self,
         prompt: str,
         system_prompt: str | None = None,
-        schema: Type[T] | None = None,
+        schema: type[T] | None = None,
     ) -> str:
         """Send a prompt to the Google Gemini API asynchronously."""
         if not settings.GEMINI_API_KEY:
@@ -613,38 +619,38 @@ class LLMClient:
             model_name = f"models/{model_name}"
 
         url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
-        
+
         contents = [{
             "role": "user",
             "parts": [{"text": prompt}]
         }]
-        
+
         payload: dict[str, Any] = {
             "contents": contents,
         }
-        
+
         if system_prompt:
             payload["systemInstruction"] = {
                 "parts": [{"text": system_prompt}]
             }
-            
+
         generation_config: dict[str, Any] = {
             "temperature": self.temperature,
         }
-        
+
         if schema:
             generation_config["responseMimeType"] = "application/json"
             pydantic_schema = schema.model_json_schema()
             gemini_schema = convert_to_gemini_schema(pydantic_schema)
             generation_config["responseSchema"] = gemini_schema
-            
+
         payload["generationConfig"] = generation_config
-        
+
         client = get_async_client()
         response = await client.post(url, json=payload)
         response.raise_for_status()
         result = response.json()
-            
+
         try:
             candidates = result.get("candidates", [])
             if not candidates:
@@ -670,13 +676,13 @@ class LLMClient:
             if "/" not in model_name:
                 model_name = f"models/{model_name}"
             url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:streamGenerateContent?key={settings.GEMINI_API_KEY}&alt=sse"
-            
+
             payload = {
                 "contents": [{"role": "user", "parts": [{"text": prompt}]}],
             }
             if system_prompt:
                 payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
-                
+
             client = get_async_client()
             async with client.stream("POST", url, json=payload) as response:
                 response.raise_for_status()
@@ -705,7 +711,7 @@ class LLMClient:
             }
             if system_prompt:
                 payload["system"] = system_prompt
-                
+
             client = get_async_client()
             async with client.stream("POST", self._build_generate_url(), json=payload) as response:
                 response.raise_for_status()
@@ -721,7 +727,7 @@ class LLMClient:
     async def generate_structured_async(
         self,
         prompt: str,
-        schema: Type[T],
+        schema: type[T],
         system_prompt: str | None = None,
         fallback_factory: Callable[[], T] | None = None,
     ) -> LLMResponse:
@@ -751,7 +757,10 @@ class LLMClient:
         if self.model.startswith("gemini-"):
             async with _global_semaphore:
                 for attempt in range(1, self.max_retries + 1):
-                    logger.info("Async Gemini attempt %d/%d for model=%s schema=%s", attempt, self.max_retries, self.model, schema.__name__)
+                    logger.info(
+                        "Async Gemini attempt %d/%d for model=%s schema=%s",
+                        attempt, self.max_retries, self.model, schema.__name__,
+                    )
                     try:
                         last_raw = await self._query_gemini_async(prompt, system_prompt=system_prompt, schema=schema)
                     except Exception as e:
@@ -785,7 +794,10 @@ class LLMClient:
                         )
                     except ValidationError as e:
                         error_messages = [f"{err['loc']}: {err['msg']}" for err in e.errors()]
-                        logger.warning("Pydantic validation failed on Gemini async attempt %d: %s", attempt, error_messages)
+                        logger.warning(
+                            "Pydantic validation failed on Gemini async attempt %d: %s",
+                            attempt, error_messages,
+                        )
                         errors.extend(error_messages)
                         await self._sleep_with_backoff_async(attempt)
                         continue
@@ -918,7 +930,7 @@ class LLMClient:
     async def generate_structured_chat_async(
         self,
         messages: list[dict[str, str]],
-        schema: Type[T],
+        schema: type[T],
         fallback_factory: Callable[[], T] | None = None,
     ) -> LLMResponse:
         """Chat-format version of generate_structured_async."""

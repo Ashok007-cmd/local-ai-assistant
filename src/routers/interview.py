@@ -2,12 +2,13 @@ from __future__ import annotations
 
 import json
 import logging
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from src.config import settings
 from src.assistant import LLMClient
+from src.config import settings
 from src.models import (
     InterviewFeedback,
     InterviewQuestion,
@@ -148,13 +149,16 @@ async def submit_answer_stream(req: SubmitAnswerRequest):
         f"Ideal keywords to cover: {', '.join(req.question.ideal_answer_keywords)}\n\n"
         f"Candidate's answer:\n{req.answer}\n\n"
         "Provide your feedback in two parts:\n"
-        "1. A conversational, spoken-style coaching response (1-2 paragraphs) talking directly to the candidate, explaining what they did well, what they missed, and how to structure it better.\n"
+        "1. A conversational, spoken-style coaching response (1-2 paragraphs) talking directly "
+        "to the candidate, explaining what they did well, what they missed, and how to structure "
+        "it better.\n"
         "2. A structured metrics block beginning exactly with the delimiter: ===METRICS===\n"
         "Followed by a single valid JSON object containing the feedback metrics. The JSON must match this schema:\n"
         f"{json.dumps(InterviewFeedback.model_json_schema(), indent=2)}\n\n"
         f"You MUST write BOTH the coaching response AND all text fields in the metrics JSON "
         f"EXCLUSIVELY in the following language: {req.language}.\n"
-        "Output the conversational coaching text first, then '===METRICS===', and then the JSON. Do not include other text or markdown code blocks for the JSON."
+        "Output the conversational coaching text first, then '===METRICS===', and then the JSON. "
+        "Do not include other text or markdown code blocks for the JSON."
     )
 
     system_prompt = (
@@ -192,7 +196,7 @@ async def submit_answer_stream(req: SubmitAnswerRequest):
                     else:
                         coaching_text_buffer += chunk
                         yield f"event: coaching\ndata: {json.dumps(chunk)}\n\n"
-            
+
             # Send done event for coaching text
             yield "event: coaching_done\ndata: {}\n\n"
 

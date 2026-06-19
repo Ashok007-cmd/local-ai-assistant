@@ -4,12 +4,13 @@ SQLite FTS5 full-text search indexing database for local RAG.
 
 from __future__ import annotations
 
-import sqlite3
 import asyncio
 import logging
+import sqlite3
 import threading
 from pathlib import Path
 from typing import Any
+
 from src.config import settings
 
 logger = logging.getLogger(__name__)
@@ -74,20 +75,21 @@ class RAGIndex:
             clean_query = "".join(c if c.isalnum() or c.isspace() else " " for c in query).strip()
             if not clean_query:
                 return []
-            
+
             # Formulate a simple word-match query (e.g. "python AND language")
             words = [w for w in clean_query.split() if w]
             if not words:
                 return []
-            fts_query = " OR ".join(words) # Use OR to get broader overlap matches matching the original implementation's keyword scoring
+            # Use OR for broader overlap matching
+            fts_query = " OR ".join(words)
 
             conn = self._get_conn()
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT title, content, rank 
-                FROM rag_documents_fts 
-                WHERE rag_documents_fts MATCH ? 
+                SELECT title, content, rank
+                FROM rag_documents_fts
+                WHERE rag_documents_fts MATCH ?
                 ORDER BY rank ASC
                 """,
                 (fts_query,)

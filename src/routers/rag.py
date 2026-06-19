@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
@@ -45,7 +46,7 @@ async def rag_search(req: RAGSearchRequest):
         }
 
     results = await rag_index.search_documents_async(req.query)
-    
+
     if results:
         context = "\n\n".join(res["document"]["content"] for res in results)
     else:

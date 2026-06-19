@@ -10,15 +10,14 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.config import settings
-from src.routers import resume, interview, rag
+from src.routers import interview, rag, resume
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,7 +61,7 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    
+
     # CSP: Allow self, cdnjs (for pdf.js), and google fonts, and connect-src for ollama and gemini
     csp_value = (
         "default-src 'self'; "
@@ -150,12 +149,20 @@ async def get_benchmarks():
             reader = csv.DictReader(f)
             for row in reader:
                 processed_row = {}
+                _INT_KEYS = {
+                    "prompt_length_chars", "prompt_length_tokens_est",
+                    "response_length_chars", "response_length_tokens_est",
+                }
+                _FLOAT_KEYS = {
+                    "time_to_first_token_s", "total_generation_time_s",
+                    "tokens_per_second", "peak_vram_mb", "peak_ram_mb",
+                }
                 for k, v in row.items():
                     if v == "":
                         processed_row[k] = None
-                    elif k in ["prompt_length_chars", "prompt_length_tokens_est", "response_length_chars", "response_length_tokens_est"]:
+                    elif k in _INT_KEYS:
                         processed_row[k] = int(v)
-                    elif k in ["time_to_first_token_s", "total_generation_time_s", "tokens_per_second", "peak_vram_mb", "peak_ram_mb"]:
+                    elif k in _FLOAT_KEYS:
                         try:
                             processed_row[k] = float(v)
                         except ValueError:

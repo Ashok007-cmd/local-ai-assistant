@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from src.config import settings
 from src.assistant import LLMClient, default_resume_fallback
+from src.config import settings
 from src.models import ResumeAnalysisResult
 
 logger = logging.getLogger(__name__)

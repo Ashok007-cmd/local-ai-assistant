@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import json
-from unittest.mock import MagicMock, patch, AsyncMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
 
-from src.models import InterviewFeedback, InterviewQuestion
-from src.assistant import resolve_schema_refs, convert_to_gemini_schema, LLMClient
 from src.app import app
-from src.config import settings
+from src.assistant import LLMClient, convert_to_gemini_schema, resolve_schema_refs
+from src.models import InterviewFeedback, InterviewQuestion
+
 
 @pytest.fixture(autouse=True)
 def clear_cache_before_each_test():
@@ -69,20 +69,23 @@ class TestGeminiClientRouting:
         mock_settings.GEMINI_API_KEY = "dummy-key"
         mock_settings.LLM_MAX_RETRIES = 3
         mock_settings.LLM_TIMEOUT = 120.0
-        
+
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "candidates": [{
                 "content": {
                     "parts": [{
-                        "text": '{"score": 8.0, "strengths": ["test"], "weaknesses": ["test"], "suggested_answer_framework": "test", "missed_keywords": []}'
+                        "text": (
+                            '{"score": 8.0, "strengths": ["test"], "weaknesses": ["test"],'
+                            ' "suggested_answer_framework": "test", "missed_keywords": []}'
+                        )
                     }]
                 }
             }]
         }
         mock_post.return_value = mock_response
-        
+
         client = LLMClient(model="gemini-2.5-flash")
         res = client.generate_structured(
             prompt="Test prompt",
@@ -99,20 +102,23 @@ class TestGeminiClientRouting:
         mock_settings.GEMINI_API_KEY = "dummy-key"
         mock_settings.LLM_MAX_RETRIES = 3
         mock_settings.LLM_TIMEOUT = 120.0
-        
+
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
             "candidates": [{
                 "content": {
                     "parts": [{
-                        "text": '{"score": 9.5, "strengths": ["test"], "weaknesses": ["test"], "suggested_answer_framework": "test", "missed_keywords": []}'
+                        "text": (
+                            '{"score": 9.5, "strengths": ["test"], "weaknesses": ["test"],'
+                            ' "suggested_answer_framework": "test", "missed_keywords": []}'
+                        )
                     }]
                 }
             }]
         }
         mock_post.return_value = mock_response
-        
+
         client = LLMClient(model="gemini-2.5-flash")
         res = await client.generate_structured_async(
             prompt="Test prompt",
@@ -126,16 +132,19 @@ class TestGeminiClientRouting:
 class TestStreamingRoutes:
     def test_submit_answer_stream_endpoint(self):
         client = TestClient(app)
-        
-        mock_stream = AsyncMock()
+
+        AsyncMock()
         async def mock_generator(*args, **kwargs):
             yield "coaching critique text"
             yield "===METRICS==="
-            yield '{"score": 8.0, "strengths": ["A"], "weaknesses": ["B"], "suggested_answer_framework": "STAR", "missed_keywords": []}'
-        
+            yield (
+                '{"score": 8.0, "strengths": ["A"], "weaknesses": ["B"],'
+                ' "suggested_answer_framework": "STAR", "missed_keywords": []}'
+            )
+
         mock_client = MagicMock()
         mock_client.stream_raw_async.return_value = mock_generator()
-        
+
         with patch("src.routers.interview._get_client", return_value=mock_client):
             payload = {
                 "question": {
@@ -148,11 +157,11 @@ class TestStreamingRoutes:
                 "answer": "My name is John Doe and I have 5 years of software engineering experience.",
                 "model": "llama3.2:3b"
             }
-            
+
             response = client.post("/interview/submit-answer-stream", json=payload)
             assert response.status_code == 200
             assert "text/event-stream" in response.headers["content-type"]
-            
+
             content = response.content.decode("utf-8")
             assert "event: coaching" in content
             assert "event: metrics" in content
@@ -163,7 +172,7 @@ class TestStreamingRoutes:
         client = TestClient(app)
         # Create a payload larger than 2MB
         huge_payload = "a" * (2 * 1024 * 1024 + 100)
-        
+
         response = client.post("/analyze-resume", content=huge_payload)
         assert response.status_code == 413
         assert "Request payload too large" in response.json()["detail"]
@@ -198,7 +207,7 @@ class TestI18nRoutes:
         assert response.status_code == 200
         assert response.json()["success"] is True
         assert response.json()["data"]["question"] == "¿Háblame de ti?"
-        
+
         # Verify language is passed into the prompt
         args, kwargs = mock_llm.generate_structured_async.call_args
         assert "spanish" in kwargs.get("prompt", "")
@@ -237,23 +246,23 @@ class TestI18nRoutes:
         assert response.status_code == 200
         assert response.json()["success"] is True
         assert response.json()["data"]["score"] == 9.0
-        
+
         # Verify language is passed into the prompt
         args, kwargs = mock_llm.generate_structured_async.call_args
         assert "german" in kwargs.get("prompt", "")
 
     def test_submit_answer_stream_german_fallback(self):
         client = TestClient(app)
-        
+
         # We simulate a stream that outputs invalid JSON so the fallback is triggered
         async def mock_generator(*args, **kwargs):
             yield "coaching feedback"
             yield "===METRICS==="
             yield 'malformed json'
-        
+
         mock_client = MagicMock()
         mock_client.stream_raw_async.return_value = mock_generator()
-        
+
         with patch("src.routers.interview._get_client", return_value=mock_client):
             payload = {
                 "question": {
@@ -269,7 +278,7 @@ class TestI18nRoutes:
             }
             response = client.post("/interview/submit-answer-stream", json=payload)
             assert response.status_code == 200
-            
+
             content = response.content.decode("utf-8")
             assert "event: coaching" in content
             assert "event: metrics" in content
@@ -280,15 +289,15 @@ class TestI18nRoutes:
 
     def test_submit_answer_stream_spanish_fallback(self):
         client = TestClient(app)
-        
+
         async def mock_generator(*args, **kwargs):
             yield "coaching feedback"
             yield "===METRICS==="
             yield 'malformed json'
-        
+
         mock_client = MagicMock()
         mock_client.stream_raw_async.return_value = mock_generator()
-        
+
         with patch("src.routers.interview._get_client", return_value=mock_client):
             payload = {
                 "question": {
@@ -304,7 +313,7 @@ class TestI18nRoutes:
             }
             response = client.post("/interview/submit-answer-stream", json=payload)
             assert response.status_code == 200
-            
+
             content = response.content.decode("utf-8")
             assert "event: coaching" in content
             assert "event: metrics" in content
@@ -325,14 +334,14 @@ def test_security_headers():
 
 @pytest.mark.asyncio
 async def test_async_client_lifecycle():
-    from src.assistant import get_async_client, close_async_client
+    from src.assistant import close_async_client, get_async_client
     client1 = get_async_client()
     assert client1 is not None
     assert not client1.is_closed
-    
+
     client2 = get_async_client()
     assert client1 is client2  # Shared instance
-    
+
     await close_async_client()
     assert client1.is_closed
 
