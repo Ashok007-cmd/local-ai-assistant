@@ -1,17 +1,27 @@
-## Description
-Describe the changes introduced by this Pull Request and their motivation/context.
+## Summary
+<!-- 2–4 bullet points describing what this PR does and why. -->
+- 
+- 
 
-## Type of Change
-Please delete options that are not relevant.
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
+## Type of change
+- [ ] Bug fix (non-breaking)
+- [ ] New feature (non-breaking)
+- [ ] Breaking change (existing behaviour changes)
+- [ ] Security fix
+- [ ] Documentation / tooling update
+- [ ] Refactor / performance improvement
 
-## Checklist:
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my own code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] I have made corresponding changes to the documentation
-- [ ] New and existing tests pass locally with my changes
-- [ ] I have checked that coverage is maintained
+## How was this tested?
+<!-- Describe the test cases you ran or added. -->
+- [ ] `pytest -v --cov=src` passes locally
+- [ ] `ruff check src/ tests/` passes locally
+- [ ] Manual test against Ollama (`ollama pull <model>` + `uvicorn src.app:app --reload`)
+- [ ] Docker build tested (`docker-compose up --build`)
+
+## Checklist
+- [ ] Code follows the project style (`ruff` + `Black`, line-length 120)
+- [ ] New behaviour is covered by tests
+- [ ] CHANGELOG.md updated (if user-visible change)
+- [ ] README.md updated (if API, config, or feature changed)
+- [ ] No secrets, API keys, or `.env` files committed
+- [ ] Security implications considered (XSS, injection, CORS, rate limiting)

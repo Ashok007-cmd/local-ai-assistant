@@ -1,30 +1,42 @@
 ---
 name: Bug report
-about: Create a report to help us improve.
+about: Something is broken — help us fix it.
 title: 'bug: '
 labels: bug
 assignees: ''
-
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## What happened?
+A clear description of the bug.
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Go to '...'
-2. Click on '....'
-3. Scroll down to '....'
+## Steps to reproduce
+1. Start the app with `uvicorn src.app:app --reload`
+2. Go to `...`
+3. Do `...`
 4. See error
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+## Expected behaviour
+What should have happened instead.
 
-**Screenshots / Console Logs**
-If applicable, add screenshots or console output to help explain your problem.
+## Actual behaviour
+What actually happened (include error messages, stack traces, or screenshots).
 
-**Environment (please complete the following information):**
-- OS: [e.g. Linux, macOS, Windows]
-- Browser [e.g. chrome, safari]
-- Model: [e.g. llama3.2:3b, gemini-1.5-flash]
-- Connection: [e.g. Local Ollama, Cloud Gemini API]
+## Environment
+
+| Field | Value |
+|---|---|
+| OS | e.g. Ubuntu 24.04, macOS 14, Windows 11 |
+| Python | e.g. 3.12.3 |
+| Ollama version | e.g. 0.3.6 (`ollama --version`) |
+| Model | e.g. `llama3.2:3b`, `gemini-2.5-flash` |
+| Browser | e.g. Chrome 125, Firefox 128 |
+| Deployment | Local uvicorn / Docker / docker-compose |
+
+## Logs
+
+```
+Paste relevant server logs or browser console output here.
+```
+
+## Additional context
+Any other information that may help (network config, VRAM, concurrent requests, etc.).
