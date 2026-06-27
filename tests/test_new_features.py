@@ -145,7 +145,7 @@ class TestStreamingRoutes:
         mock_client = MagicMock()
         mock_client.stream_raw_async.return_value = mock_generator()
 
-        with patch("src.routers.interview._get_client", return_value=mock_client):
+        with patch("src.routers.interview.get_llm_client", return_value=mock_client):
             payload = {
                 "question": {
                     "question": "Tell me about yourself",
@@ -179,7 +179,7 @@ class TestStreamingRoutes:
 
 
 class TestI18nRoutes:
-    @patch("src.routers.interview._get_client")
+    @patch("src.routers.interview.get_llm_client")
     def test_generate_questions_with_language(self, mock_get_client):
         client = TestClient(app)
         mock_llm = AsyncMock()
@@ -212,7 +212,7 @@ class TestI18nRoutes:
         args, kwargs = mock_llm.generate_structured_async.call_args
         assert "spanish" in kwargs.get("prompt", "")
 
-    @patch("src.routers.interview._get_client")
+    @patch("src.routers.interview.get_llm_client")
     def test_submit_answer_with_language(self, mock_get_client):
         client = TestClient(app)
         mock_llm = AsyncMock()
@@ -263,7 +263,7 @@ class TestI18nRoutes:
         mock_client = MagicMock()
         mock_client.stream_raw_async.return_value = mock_generator()
 
-        with patch("src.routers.interview._get_client", return_value=mock_client):
+        with patch("src.routers.interview.get_llm_client", return_value=mock_client):
             payload = {
                 "question": {
                     "question": "Tell me about yourself",
@@ -298,7 +298,7 @@ class TestI18nRoutes:
         mock_client = MagicMock()
         mock_client.stream_raw_async.return_value = mock_generator()
 
-        with patch("src.routers.interview._get_client", return_value=mock_client):
+        with patch("src.routers.interview.get_llm_client", return_value=mock_client):
             payload = {
                 "question": {
                     "question": "Tell me about yourself",
@@ -330,6 +330,8 @@ def test_security_headers():
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
     assert "Content-Security-Policy" in response.headers
+    assert response.headers["X-XSS-Protection"] == "1; mode=block"
+    assert "Permissions-Policy" in response.headers
 
 
 @pytest.mark.asyncio

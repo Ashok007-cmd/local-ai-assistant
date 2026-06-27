@@ -541,8 +541,10 @@ class TestFastAPIRoutes:
         with patch("httpx.AsyncClient", return_value=mock_async_client):
             response = client.get("/health")
             assert response.status_code == 200
-            assert response.json()["status"] == "ok"
-            assert "llama3.2:3b" in response.json()["models_available"]
+            data = response.json()
+            assert data["status"] == "ok"
+            assert "llama3.2:3b" in data["models_available"]
+            assert "rate_limit_rpm" in data
 
     def test_benchmarks_endpoint_missing_file(self):
         from fastapi.testclient import TestClient

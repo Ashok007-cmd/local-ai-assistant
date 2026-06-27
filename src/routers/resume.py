@@ -5,9 +5,10 @@ import logging
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
-from src.assistant import LLMClient, default_resume_fallback
+from src.assistant import default_resume_fallback
 from src.config import settings
 from src.models import ResumeAnalysisResult
+from src.routers._client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -20,20 +21,6 @@ class AnalyzeResumeRequest(BaseModel):
     language: str = Field(default="english", description="Preferred output language")
 
 
-clients: dict[str, LLMClient] = {}
-
-def _get_client(model: str) -> LLMClient:
-    """Get or create a cached LLMClient for the given model."""
-    if model not in clients:
-        clients[model] = LLMClient(
-            model=model,
-            base_url=settings.OLLAMA_BASE_URL,
-            max_retries=settings.LLM_MAX_RETRIES,
-            timeout=settings.LLM_TIMEOUT,
-        )
-    return clients[model]
-
-
 @router.post("/analyze-resume")
 async def analyze_resume(req: AnalyzeResumeRequest):
     """
@@ -42,7 +29,7 @@ async def analyze_resume(req: AnalyzeResumeRequest):
     Returns structured skill analysis including gaps, matching score,
     and bullet-point improvements, localized in the preferred language.
     """
-    client = _get_client(req.model)
+    client = get_llm_client(req.model)
 
     prompt = (
         f"Analyze this resume for a {req.target_role} position.\n\n"

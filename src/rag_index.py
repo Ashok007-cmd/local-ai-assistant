@@ -56,12 +56,14 @@ class RAGIndex:
             logger.error("Failed to initialize SQLite FTS5 RAG index at %s: %s", self.db_path, e)
 
     def index_document(self, title: str, content: str) -> None:
-        """Insert a document into the FTS5 index synchronously."""
+        """Upsert a document into the FTS5 index — replaces any existing entry with the same title."""
         try:
             conn = self._get_conn()
+            # Delete existing rows with the same title first (FTS5 has no native upsert)
+            conn.execute("DELETE FROM rag_documents_fts WHERE title = ?", (title,))
             conn.execute(
                 "INSERT INTO rag_documents_fts (title, content) VALUES (?, ?)",
-                (title, content)
+                (title, content),
             )
             conn.commit()
             logger.info("Indexed document: %s", title)

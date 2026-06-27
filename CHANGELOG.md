@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
+## [1.1.0] — 2026-06-28
+
+### Security
+- **XSS hardening** — added `escapeHtml()` utility in `app.js`; all 12 `innerHTML` template-literal sites that interpolated LLM-sourced or user-supplied data now escape output, closing a stored-XSS vector
+- **CORS default fixed** — `.env.example` no longer ships with `CORS_ORIGINS=*`; defaults to `localhost` only
+- **New HTTP security headers** — `X-XSS-Protection: 1; mode=block`, `Permissions-Policy`, and `X-API-Version` added to every response
+- **Error message sanitisation** — internal Python exception text is no longer forwarded to API clients; errors are logged server-side only
+
+### Added
+- **In-memory rate limiter** — sliding-window middleware (60 req/min per IP by default, configurable via `RATE_LIMIT_RPM`); returns HTTP 429 with `Retry-After: 60` on breach
+- **Pydantic `BaseSettings` config** — `src/config.py` migrated from raw `os.getenv()` to `pydantic-settings`; gains `.env` file auto-loading, field-level validators (`gt`, `ge`, `le`), and CORS list coercion
+- **RAG upsert semantics** — re-indexing a document with the same title now replaces the existing entry instead of creating duplicates
+- **Structured JSON logging** — set `LOG_FORMAT=json` to emit machine-readable log lines (useful for log aggregators)
+- **Enhanced OpenAPI docs** — rich description, contact, license, and tag descriptions; `HealthResponse` now includes `rate_limit_rpm`
+- **Shared client factory** — `src/routers/_client.py` eliminates the duplicated `_get_client` / `clients` dict that existed in both `resume.py` and `interview.py`
+
+### Changed
+- Version bumped to `1.1.0`
+- `requirements.txt` adds `pydantic-settings>=2.0.0`
+
+---
+
 ## [1.0.0] — 2026-06-19
 
 ### Added

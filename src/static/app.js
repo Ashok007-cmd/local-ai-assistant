@@ -1,5 +1,17 @@
 // Local AI Assistant — Dashboard Frontend Logic
 
+// HTML-escape helper — prevents XSS when inserting any external or LLM-sourced
+// text into innerHTML template literals.
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // Native IndexedDB wrapper to avoid localStorage 5MB quota exhaustion
 const AppDB = {
     dbName: 'LocalAIAssistantDB',
@@ -954,10 +966,10 @@ function renderResumeResults(res) {
             const tr = document.createElement('tr');
             
             const tdName = document.createElement('td');
-            tdName.innerHTML = `<strong>${gap.skill_name}</strong>`;
-            
+            tdName.innerHTML = `<strong>${escapeHtml(gap.skill_name)}</strong>`;
+
             const tdCat = document.createElement('td');
-            tdCat.innerHTML = `<span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">${gap.category}</span>`;
+            tdCat.innerHTML = `<span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">${escapeHtml(gap.category)}</span>`;
             
             const tdImportance = document.createElement('td');
             tdImportance.textContent = gap.importance;
@@ -1565,11 +1577,11 @@ async function renderHistory() {
             card.onclick = () => loadResumeHistoryItem(item);
             card.innerHTML = `
                 <div class="history-item-header">
-                    <span class="history-item-title">${item.targetRole}</span>
-                    <span class="history-item-date">${item.date}</span>
+                    <span class="history-item-title">${escapeHtml(item.targetRole)}</span>
+                    <span class="history-item-date">${escapeHtml(item.date)}</span>
                 </div>
                 <div class="history-item-meta">
-                    ${t('candidate_label')}: ${item.data.candidate_name || t('not_specified')} | ${t('match_label')}: <span class="green-text" style="font-weight:600;">${Math.round(item.data.skill_analysis.matching_score)}%</span>
+                    ${t('candidate_label')}: ${escapeHtml(item.data.candidate_name || t('not_specified'))} | ${t('match_label')}: <span class="green-text" style="font-weight:600;">${Math.round(item.data.skill_analysis.matching_score)}%</span>
                 </div>
             `;
             resumeContainer.appendChild(card);
@@ -1587,11 +1599,11 @@ async function renderHistory() {
             card.onclick = () => loadInterviewHistoryItem(item);
             card.innerHTML = `
                 <div class="history-item-header">
-                    <span class="history-item-title">${item.question.target_skill}</span>
-                    <span class="history-item-date">${item.date}</span>
+                    <span class="history-item-title">${escapeHtml(item.question.target_skill)}</span>
+                    <span class="history-item-date">${escapeHtml(item.date)}</span>
                 </div>
                 <div class="history-item-meta">
-                    ${t('score_label')}: <span class="green-text" style="font-weight:600;">${item.feedback.score}/10</span> | ${t('difficulty_label')}: ${item.question.difficulty.toUpperCase()}
+                    ${t('score_label')}: <span class="green-text" style="font-weight:600;">${escapeHtml(String(item.feedback.score))}/10</span> | ${t('difficulty_label')}: ${escapeHtml(item.question.difficulty.toUpperCase())}
                 </div>
             `;
             interviewContainer.appendChild(card);
@@ -1643,7 +1655,7 @@ async function loadBenchmarkData() {
         
         const res = await response.json();
         if (!res.success) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--color-danger);">${res.error}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--color-danger);">${escapeHtml(res.error)}</td></tr>`;
             return;
         }
         
@@ -1711,7 +1723,7 @@ function processAndRenderBenchmarks(rawRuns) {
     summary.forEach(s => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${s.name}</strong></td>
+            <td><strong>${escapeHtml(s.name)}</strong></td>
             <td><span class="green-text" style="font-weight:600;">${s.tps.toFixed(1)} tok/s</span></td>
             <td>${s.ttft.toFixed(3)}s</td>
             <td>${s.vram > 0 ? s.vram.toFixed(0) + ' MB' : '0 MB (CPU)'}</td>
@@ -1745,7 +1757,7 @@ function renderTpsChart(summary, maxTps) {
         const row = document.createElement('div');
         row.className = 'chart-bar-row';
         row.innerHTML = `
-            <div class="bar-label">${s.name}</div>
+            <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track">
                 <div class="bar-fill" style="width: 0%"></div>
             </div>
@@ -1775,7 +1787,7 @@ function renderTtftChart(summary, maxTtft) {
         const row = document.createElement('div');
         row.className = 'chart-bar-row';
         row.innerHTML = `
-            <div class="bar-label">${s.name}</div>
+            <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track">
                 <div class="bar-fill warning" style="width: 0%"></div>
             </div>
@@ -1805,7 +1817,7 @@ function renderMemoryChart(summary, maxMem) {
         const row = document.createElement('div');
         row.className = 'chart-bar-row';
         row.innerHTML = `
-            <div class="bar-label">${s.name}</div>
+            <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track" style="display:flex; border:none; background:transparent;">
                 <div class="bar-fill" style="width: 0%; border-radius: 4px 0 0 4px; background:var(--color-primary);"></div>
                 <div class="bar-fill warning" style="width: 0%; border-radius: 0 4px 4px 0; background:var(--color-info);"></div>
@@ -1840,9 +1852,9 @@ function renderComplianceChart(summary) {
         if (s.compliance < 50) barClass = 'danger';
         
         row.innerHTML = `
-            <div class="bar-label">${s.name}</div>
+            <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track">
-                <div class="bar-fill ${barClass}" style="width: 0%"></div>
+                <div class="bar-fill ${escapeHtml(barClass)}" style="width: 0%"></div>
             </div>
             <div class="bar-value">${s.compliance.toFixed(0)}%</div>
         `;

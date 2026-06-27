@@ -7,13 +7,13 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from src.assistant import LLMClient
 from src.config import settings
 from src.models import (
     InterviewFeedback,
     InterviewQuestion,
     parse_llm_json_output,
 )
+from src.routers._client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
@@ -33,26 +33,12 @@ class SubmitAnswerRequest(BaseModel):
     language: str = Field(default="english", description="Preferred language")
 
 
-clients: dict[str, LLMClient] = {}
-
-def _get_client(model: str) -> LLMClient:
-    """Get or create a cached LLMClient for the given model."""
-    if model not in clients:
-        clients[model] = LLMClient(
-            model=model,
-            base_url=settings.OLLAMA_BASE_URL,
-            max_retries=settings.LLM_MAX_RETRIES,
-            timeout=settings.LLM_TIMEOUT,
-        )
-    return clients[model]
-
-
 @router.post("/interview/generate-questions")
 async def generate_questions(req: InterviewSimulateRequest):
     """
     Generate mock interview questions asynchronously based on a resume and target role.
     """
-    client = _get_client(req.model)
+    client = get_llm_client(req.model)
 
     prompt = (
         f"Generate 1 mock interview question for a {req.target_role} position.\n"
@@ -93,7 +79,7 @@ async def submit_answer(req: SubmitAnswerRequest):
     """
     Submit an answer to an interview question asynchronously and get structured feedback.
     """
-    client = _get_client(req.model)
+    client = get_llm_client(req.model)
 
     prompt = (
         f"Question: {req.question.question}\n"
@@ -138,7 +124,7 @@ async def submit_answer_stream(req: SubmitAnswerRequest):
     Submit an answer to an interview question and get a streaming coaching response
     followed by the final structured JSON metrics.
     """
-    client = _get_client(req.model)
+    client = get_llm_client(req.model)
 
     prompt = (
         f"You are conducting a mock interview for the role of {req.question.target_skill} or related target role.\n"

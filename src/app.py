@@ -5,33 +5,64 @@ Integrates modular routers, configures middlewares, and serves static files.
 
 from __future__ import annotations
 
+import collections
 import csv
 import logging
+import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from src.config import settings
 from src.routers import interview, rag, resume
 
-logging.basicConfig(level=logging.INFO)
+_log_fmt = os.getenv("LOG_FORMAT", "text")
+if _log_fmt == "json":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='{"time":"%(asctime)s","level":"%(levelname)s","name":"%(name)s","msg":"%(message)s"}',
+    )
+else:
+    logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# In-memory sliding-window rate limiter (per remote IP, requests per minute)
+# ---------------------------------------------------------------------------
+_rate_buckets: dict[str, collections.deque] = collections.defaultdict(collections.deque)
+
+
+def _is_rate_limited(ip: str) -> bool:
+    """Return True if *ip* has exceeded RATE_LIMIT_RPM in the last 60 seconds."""
+    if settings.RATE_LIMIT_RPM <= 0:
+        return False
+    now = time.monotonic()
+    bucket = _rate_buckets[ip]
+    # Evict timestamps older than 60 s
+    while bucket and now - bucket[0] > 60.0:
+        bucket.popleft()
+    if len(bucket) >= settings.RATE_LIMIT_RPM:
+        return True
+    bucket.append(now)
+    return False
 
 
 class HealthResponse(BaseModel):
     status: str
     models_available: list[str]
+    rate_limit_rpm: int
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
-    logger.info("Starting Local AI Assistant API")
+    logger.info("Starting Local AI Assistant API (v%s)", app.version)
     yield
     logger.info("Shutting down Local AI Assistant API")
     from src.assistant import close_async_client
@@ -40,9 +71,28 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Local AI Assistant — Offline SLM",
-    description="Private resume optimizer & mock interviewer powered by local Ollama models",
-    version="1.0.0",
+    description=(
+        "**Private-by-design** AI assistant powered by local Ollama models with optional "
+        "Google Gemini cloud fallback.\n\n"
+        "- Resume text never leaves your machine when using Ollama.\n"
+        "- All responses are schema-validated via Pydantic with an auto-retry loop.\n"
+        "- SQLite WAL cache eliminates repeat inference cost.\n\n"
+        "Interactive docs: [/docs](/docs) · OpenAPI spec: [/openapi.json](/openapi.json)"
+    ),
+    version="1.1.0",
+    contact={
+        "name": "Ashok Kumar",
+        "url": "https://github.com/Ashok007-cmd/local-ai-assistant",
+    },
+    license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
     lifespan=lifespan,
+    openapi_tags=[
+        {"name": "system", "description": "Health checks and system status."},
+        {"name": "resume", "description": "Resume optimization and skill-gap analysis."},
+        {"name": "interview", "description": "Mock interview generation and streaming feedback."},
+        {"name": "rag", "description": "Document indexing and full-text search (SQLite FTS5)."},
+        {"name": "benchmarks", "description": "Local SLM performance benchmark results."},
+    ],
 )
 
 # Configure CORS Middleware
@@ -56,13 +106,28 @@ app.add_middleware(
 
 
 @app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    """Sliding-window rate limiter: rejects excess requests with HTTP 429."""
+    ip = request.client.host if request.client else "unknown"
+    if _is_rate_limited(ip):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": f"Rate limit exceeded. Max {settings.RATE_LIMIT_RPM} requests/minute."},
+            headers={"Retry-After": "60"},
+        )
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def add_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=()"
+    response.headers["X-API-Version"] = app.version
 
-    # CSP: Allow self, cdnjs (for pdf.js), and google fonts, and connect-src for ollama and gemini
     csp_value = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
@@ -77,7 +142,7 @@ async def add_security_headers(request: Request, call_next):
 
 @app.middleware("http")
 async def limit_upload_size(request: Request, call_next):
-    # Limit requests to prevent memory exhaustion DoS
+    """Reject payloads exceeding MAX_UPLOAD_SIZE to prevent memory-exhaustion DoS."""
     MAX_SIZE = settings.MAX_UPLOAD_SIZE
     max_size_mb = MAX_SIZE / (1024 * 1024)
     error_msg = f"Request payload too large (max {max_size_mb:.1f}MB)"
@@ -86,15 +151,10 @@ async def limit_upload_size(request: Request, call_next):
     if content_length:
         try:
             if int(content_length) > MAX_SIZE:
-                from fastapi.responses import JSONResponse
-                return JSONResponse(
-                    status_code=413,
-                    content={"detail": error_msg}
-                )
+                return JSONResponse(status_code=413, content={"detail": error_msg})
         except ValueError:
             pass
 
-    # Enforce size limits on chunked requests
     body_size = 0
     original_receive = request._receive
 
@@ -113,12 +173,8 @@ async def limit_upload_size(request: Request, call_next):
         return await call_next(request)
     except RuntimeError as e:
         if str(e) == error_msg:
-            from fastapi.responses import JSONResponse
-            return JSONResponse(
-                status_code=413,
-                content={"detail": error_msg}
-            )
-        raise e
+            return JSONResponse(status_code=413, content={"detail": error_msg})
+        raise
 
 
 # Include routers
@@ -130,25 +186,25 @@ app.include_router(rag.router)
 app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def read_index():
     """Serve the single-page application frontend."""
     return FileResponse("src/static/index.html")
 
 
-@app.get("/benchmarks", tags=["benchmarks"])
+@app.get("/benchmarks", tags=["benchmarks"], summary="Model benchmark results")
 async def get_benchmarks():
-    """Return the combined model comparison benchmark results."""
+    """Return combined SLM benchmark results (TPS, TTFT, VRAM, JSON compliance)."""
     csv_path = Path("benchmarks/benchmark_results_all.csv")
     if not csv_path.exists():
-        return {"success": False, "error": "Benchmark results not found. Please run the benchmarks first."}
+        return {"success": False, "error": "Benchmark results not found. Run benchmarks/run_benchmarks.sh first."}
 
     results = []
     try:
         with csv_path.open(mode="r", encoding="utf-8") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                processed_row = {}
+                processed_row: dict = {}
                 _INT_KEYS = {
                     "prompt_length_chars", "prompt_length_tokens_est",
                     "response_length_chars", "response_length_tokens_est",
@@ -174,15 +230,16 @@ async def get_benchmarks():
                 results.append(processed_row)
         return {"success": True, "data": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading benchmark results: {e}")
+        logger.error("Error reading benchmark results: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to read benchmark results. Check server logs.")
 
 
-@app.get("/health", response_model=HealthResponse, tags=["system"])
+@app.get("/health", response_model=HealthResponse, tags=["system"], summary="Service health check")
 async def health_check():
-    """Basic health check — verifies Ollama is reachable and lists available models."""
+    """Verify Ollama/Gemini connectivity and list available models."""
     from src.assistant import get_async_client
 
-    models = []
+    models: list[str] = []
     gemini_active = bool(settings.GEMINI_API_KEY)
     if gemini_active:
         models.extend(["gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"])
@@ -201,9 +258,11 @@ async def health_check():
     if not ollama_online and not gemini_active:
         raise HTTPException(status_code=503, detail="Neither Ollama nor Gemini API is available")
 
-    # Remove duplicates but keep order
-    seen = set()
+    seen: set[str] = set()
     unique_models = [x for x in models if not (x in seen or seen.add(x))]
 
-    status_str = "ok"
-    return HealthResponse(status=status_str, models_available=unique_models)
+    return HealthResponse(
+        status="ok",
+        models_available=unique_models,
+        rate_limit_rpm=settings.RATE_LIMIT_RPM,
+    )
