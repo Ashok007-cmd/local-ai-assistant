@@ -107,7 +107,7 @@ app = FastAPI(
         "- SQLite WAL cache eliminates repeat inference cost.\n\n"
         "Interactive docs: [/docs](/docs) · OpenAPI spec: [/openapi.json](/openapi.json)"
     ),
-    version="1.2.0",
+    version="1.2.1",
     contact={
         "name": "Ashok Kumar",
         "url": "https://github.com/Ashok007-cmd/local-ai-assistant",
@@ -158,10 +158,13 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(self), camera=()"
     response.headers["X-API-Version"] = app.version
 
+    # No 'unsafe-inline' on script-src or style-src: the frontend has no inline
+    # <script>/<style> blocks or onclick=/style= HTML attributes — all UI wiring uses
+    # addEventListener (app.js) and CSS classes (styles.css). See SECURITY.md F-6.
     csp_value = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "script-src 'self' https://cdnjs.cloudflare.com; "
+        "style-src 'self' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "connect-src 'self' http://localhost:* https://generativelanguage.googleapis.com; "
         "img-src 'self' data:;"

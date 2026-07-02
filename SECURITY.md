@@ -19,7 +19,7 @@ Open a GitHub issue or contact the maintainer directly for anything sensitive �
 | F-3 | High | User-supplied `model` spliced unvalidated into the outbound Gemini URL | **Fixed** — validated against a fixed allow-list before use |
 | F-4 | High | Rate limiter shared one budget across health checks, static assets, and LLM calls | **Fixed** — `/health`, `/docs`, `/openapi.json`, `/static/*` exempted |
 | F-5 | Medium | Rate-limiter state unbounded and process-local | **Fixed** — stale per-IP buckets swept periodically |
-| F-6 | Medium | CSP allows `'unsafe-inline'` for scripts/styles | Open — requires converting inline `onclick`/`onchange` HTML attributes to `addEventListener`, a larger frontend change; tracked for a follow-up pass |
+| F-6 | Medium | CSP allows `'unsafe-inline'` for scripts/styles | **Fixed** — 17 `onclick`/`onchange` HTML attributes converted to `addEventListener` bindings, 19 inline `style="..."` attributes moved to CSS classes; `'unsafe-inline'` dropped from both `script-src` and `style-src` |
 | F-7 | Medium | Broad `except Exception` in cache/RAG DB paths swallows errors silently | Open — acceptable as a cache-miss fallback today; tracked for observability follow-up |
 | F-8 | Medium | `CORS allow_credentials=True` with no cookie/session auth in use | **Fixed** — disabled |
 | F-9 | Low | Docker base image / GitHub Actions pinned by tag, not digest/SHA | Open — tracked |
@@ -29,7 +29,7 @@ Open a GitHub issue or contact the maintainer directly for anything sensitive �
 
 - `pip-audit` against `requirements.txt`: **no known vulnerabilities**
 - `bandit -r src/`: **zero medium/high findings** (4 low-confidence non-issues: non-cryptographic RNG used for retry-jitter, and two intentional `except Exception: continue` in SSE streaming loops)
-- Full test suite: **56/56 passing**, `ruff check` clean
+- Full test suite: **58/58 passing**, `ruff check` clean
 
 ## Design notes for reviewers
 

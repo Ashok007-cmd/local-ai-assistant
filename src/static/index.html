@@ -44,7 +44,7 @@
 
             <div class="model-select-wrapper">
                 <label for="global-lang-select" data-i18n="select_language">Language:</label>
-                <select id="global-lang-select" class="modern-select" onchange="changeLanguage(this.value)">
+                <select id="global-lang-select" class="modern-select">
                     <option value="english" selected>English</option>
                     <option value="spanish">Español</option>
                     <option value="german">Deutsch</option>
@@ -57,19 +57,19 @@
         <!-- Sidebar Navigation -->
         <aside class="dashboard-sidebar">
             <nav class="sidebar-nav">
-                <button class="nav-btn active" id="nav-btn-resume" onclick="switchTab('resume')">
+                <button class="nav-btn active" id="nav-btn-resume" data-tab="resume">
                     <span class="nav-icon">📄</span>
                     <span class="nav-label" data-i18n="nav_resume">Resume Optimizer</span>
                 </button>
-                <button class="nav-btn" id="nav-btn-interview" onclick="switchTab('interview')">
+                <button class="nav-btn" id="nav-btn-interview" data-tab="interview">
                     <span class="nav-icon">💬</span>
                     <span class="nav-label" data-i18n="nav_interview">Mock Interviewer</span>
                 </button>
-                <button class="nav-btn" id="nav-btn-benchmarks" onclick="switchTab('benchmarks')">
+                <button class="nav-btn" id="nav-btn-benchmarks" data-tab="benchmarks">
                     <span class="nav-icon">📊</span>
                     <span class="nav-label" data-i18n="nav_benchmarks">Model Benchmarks</span>
                 </button>
-                <button class="nav-btn" id="nav-btn-history" onclick="switchTab('history')">
+                <button class="nav-btn" id="nav-btn-history" data-tab="history">
                     <span class="nav-icon">📜</span>
                     <span class="nav-label" data-i18n="nav_history">Session History</span>
                 </button>
@@ -93,7 +93,7 @@
                     <h4>⚠️ Ollama Connection Error</h4>
                     <p>
                         <span>Local AI Assistant cannot establish connection with Ollama on your machine. Make sure Ollama is running (e.g. run <code>ollama serve</code>).</span>
-                        <button class="btn-retry-connection" onclick="checkOllamaHealth()">Retry Connection</button>
+                        <button class="btn-retry-connection" data-action="check-ollama-health">Retry Connection</button>
                     </p>
                 </div>
 
@@ -110,23 +110,23 @@
 
                         <div class="form-group">
                             <label data-i18n="upload_resume">Upload Resume PDF</label>
-                            <div class="pdf-upload-zone" id="pdf-upload-zone" onclick="document.getElementById('pdf-file-input').click()">
+                            <div class="pdf-upload-zone" id="pdf-upload-zone">
                                 <span class="upload-icon">📂</span>
                                 <span class="upload-text" data-i18n="upload_drag_drop">Click to upload or drag & drop PDF</span>
                                 <span class="upload-filename" id="pdf-filename"></span>
-                                <input type="file" id="pdf-file-input" accept="application/pdf" style="display: none;" onchange="handlePDFUpload(event)">
+                                <input type="file" id="pdf-file-input" accept="application/pdf" class="hidden">
                             </div>
                         </div>
 
                         <div class="form-group">
                             <div class="label-row">
                                 <label for="resume-text" data-i18n="resume_plain_text">Resume Plain Text</label>
-                                <button class="text-btn" onclick="loadSampleResume()" data-i18n="load_sample_resume">Load Sample Resume</button>
+                                <button class="text-btn" id="btn-load-sample-resume" data-i18n="load_sample_resume">Load Sample Resume</button>
                             </div>
                             <textarea id="resume-text" placeholder="Paste your resume here (minimum 50 characters)..." data-i18n="resume_plain_text"></textarea>
                         </div>
 
-                        <button id="btn-analyze-resume" class="btn-primary" onclick="triggerResumeAnalysis()">
+                        <button id="btn-analyze-resume" class="btn-primary">
                             <span class="btn-text" data-i18n="optimize_resume">Optimize Resume</span>
                             <span class="spinner hidden"></span>
                         </button>
@@ -248,7 +248,7 @@
                     <h4>⚠️ Ollama Connection Error</h4>
                     <p>
                         <span>Local AI Assistant cannot establish connection with Ollama on your machine. Make sure Ollama is running (e.g. run <code>ollama serve</code>).</span>
-                        <button class="btn-retry-connection" onclick="checkOllamaHealth()">Retry Connection</button>
+                        <button class="btn-retry-connection" data-action="check-ollama-health">Retry Connection</button>
                     </p>
                 </div>
 
@@ -273,13 +273,13 @@
                         </div>
                         <div class="form-group">
                             <label class="toggle-container">
-                                <input type="checkbox" id="toggle-voice-mode" onchange="toggleVoiceModeUI(this.checked)">
+                                <input type="checkbox" id="toggle-voice-mode">
                                 <span class="toggle-slider"></span>
                                 <span class="toggle-label" data-i18n="toggle_voice_mode">Voice Answer Mode</span>
                             </label>
                         </div>
 
-                        <button id="btn-start-interview" class="btn-primary" onclick="startInterview()">
+                        <button id="btn-start-interview" class="btn-primary">
                             <span class="btn-text" data-i18n="generate_question">Generate Question</span>
                             <span class="spinner hidden"></span>
                         </button>
@@ -316,7 +316,7 @@
                                 <div class="form-group">
                                     <div class="label-row">
                                         <label for="interview-answer" data-i18n="your_answer">Your Answer</label>
-                                        <button id="btn-mic" class="mic-btn hidden" onclick="toggleSpeechRecognition()">
+                                        <button id="btn-mic" class="mic-btn hidden">
                                             <span class="mic-icon">🎙️</span>
                                             <span class="mic-text" id="mic-text" data-i18n="speak_answer">Speak Answer</span>
                                         </button>
@@ -324,11 +324,11 @@
                                     <textarea id="interview-answer" placeholder="Type your answer here (minimum 10 characters)..." data-i18n="your_answer"></textarea>
                                 </div>
                                 <div class="button-row">
-                                    <button id="btn-submit-answer" class="btn-primary" onclick="submitInterviewAnswer()">
+                                    <button id="btn-submit-answer" class="btn-primary">
                                         <span class="btn-text" data-i18n="submit_answer">Submit Answer for Feedback</span>
                                         <span class="spinner hidden"></span>
                                     </button>
-                                    <button class="btn-secondary" onclick="startInterview()" data-i18n="skip_question">Skip Question</button>
+                                    <button class="btn-secondary" id="btn-skip-question" data-i18n="skip_question">Skip Question</button>
                                 </div>
                             </div>
                         </div>
@@ -336,11 +336,11 @@
                         <!-- Streaming Feedback View -->
                         <div id="interview-streaming-view" class="glass-card hidden">
                             <h3 data-i18n="realtime_coach_feedback">Real-time AI Coach Feedback</h3>
-                            <div class="streaming-content-box" id="int-streaming-text" style="font-size: 0.95rem; line-height: 1.6; min-height: 100px; max-height: 300px; overflow-y: auto; margin: 1rem 0; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid var(--border-glass);">
+                            <div class="streaming-content-box" id="int-streaming-text">
                                 <span class="streaming-loading-indicator" data-i18n="streaming_placeholder">Analyzing answer and formulating feedback...</span>
                             </div>
-                            <div class="progress-bar-container" style="width: 100%; margin-top: 1rem;">
-                                <div class="progress-bar-fill" style="animation: pulse-glow 1.5s infinite ease-in-out; width: 100%;"></div>
+                            <div class="progress-bar-container progress-bar-container--full">
+                                <div class="progress-bar-fill progress-bar-fill--streaming"></div>
                             </div>
                         </div>
 
@@ -398,7 +398,7 @@
                                 <p id="feed-framework" class="framework-text"></p>
                             </div>
 
-                            <button class="btn-primary" onclick="startInterview()" data-i18n="try_another_question">Try Another Question</button>
+                            <button class="btn-primary" id="btn-try-another-question" data-i18n="try_another_question">Try Another Question</button>
                         </div>
                     </div>
                 </div>
@@ -416,7 +416,7 @@
                         <!-- Resume History List -->
                         <div class="glass-card flex-1">
                             <h3 data-i18n="resume_history_title">Resume Optimization History</h3>
-                            <div class="history-list-container" id="resume-history-list" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="history-list-container" id="resume-history-list">
                                 <p class="text-muted">No saved resume analyses yet.</p>
                             </div>
                         </div>
@@ -424,7 +424,7 @@
                         <!-- Interview History List -->
                         <div class="glass-card flex-1">
                             <h3 data-i18n="interview_history_title">Interview Practice History</h3>
-                            <div class="history-list-container" id="interview-history-list" style="max-height: 500px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="history-list-container" id="interview-history-list">
                                 <p class="text-muted">No saved interview sessions yet.</p>
                             </div>
                         </div>

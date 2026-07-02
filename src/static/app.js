@@ -645,7 +645,43 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Automatically load benchmarks on tab switch
     const navBtnBenchmarks = document.getElementById('nav-btn-benchmarks');
     navBtnBenchmarks.addEventListener('click', loadBenchmarkData);
+
+    bindStaticEventListeners();
 });
+
+// Wires up all static UI controls. Kept as addEventListener bindings (rather than
+// inline onclick/onchange HTML attributes) so the CSP script-src directive doesn't
+// need 'unsafe-inline'.
+function bindStaticEventListeners() {
+    document.getElementById('global-lang-select').addEventListener('change', function () {
+        changeLanguage(this.value);
+    });
+
+    document.querySelectorAll('.nav-btn[data-tab]').forEach((btn) => {
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+    });
+
+    document.querySelectorAll('.btn-retry-connection[data-action="check-ollama-health"]').forEach((btn) => {
+        btn.addEventListener('click', checkOllamaHealth);
+    });
+
+    document.getElementById('pdf-upload-zone').addEventListener('click', () => {
+        document.getElementById('pdf-file-input').click();
+    });
+    document.getElementById('pdf-file-input').addEventListener('change', handlePDFUpload);
+
+    document.getElementById('btn-load-sample-resume').addEventListener('click', loadSampleResume);
+    document.getElementById('btn-analyze-resume').addEventListener('click', triggerResumeAnalysis);
+
+    document.getElementById('toggle-voice-mode').addEventListener('change', function () {
+        toggleVoiceModeUI(this.checked);
+    });
+    document.getElementById('btn-start-interview').addEventListener('click', startInterview);
+    document.getElementById('btn-mic').addEventListener('click', toggleSpeechRecognition);
+    document.getElementById('btn-submit-answer').addEventListener('click', submitInterviewAnswer);
+    document.getElementById('btn-skip-question').addEventListener('click', startInterview);
+    document.getElementById('btn-try-another-question').addEventListener('click', startInterview);
+}
 
 // Health check with Ollama & Gemini backend
 async function checkOllamaHealth() {
@@ -960,7 +996,7 @@ function renderResumeResults(res) {
     const gapsTbody = document.getElementById('res-skill-gaps');
     gapsTbody.innerHTML = '';
     if (data.skill_analysis.missing_skills.length === 0) {
-        gapsTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;">${t('no_skill_gaps')}</td></tr>`;
+        gapsTbody.innerHTML = `<tr><td colspan="4" class="u-text-center">${t('no_skill_gaps')}</td></tr>`;
     } else {
         data.skill_analysis.missing_skills.forEach(gap => {
             const tr = document.createElement('tr');
@@ -969,7 +1005,7 @@ function renderResumeResults(res) {
             tdName.innerHTML = `<strong>${escapeHtml(gap.skill_name)}</strong>`;
 
             const tdCat = document.createElement('td');
-            tdCat.innerHTML = `<span class="badge" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">${escapeHtml(gap.category)}</span>`;
+            tdCat.innerHTML = `<span class="badge badge-neutral">${escapeHtml(gap.category)}</span>`;
             
             const tdImportance = document.createElement('td');
             tdImportance.textContent = gap.importance;
@@ -1568,7 +1604,7 @@ async function renderHistory() {
 
     // Render Resume history
     if (resHistory.length === 0) {
-        resumeContainer.innerHTML = `<p class="text-muted" style="padding: 1.5rem; text-align: center;">${t('no_resume_history')}</p>`;
+        resumeContainer.innerHTML = `<p class="text-muted u-empty-state">${t('no_resume_history')}</p>`;
     } else {
         resumeContainer.innerHTML = '';
         resHistory.forEach(item => {
@@ -1581,7 +1617,7 @@ async function renderHistory() {
                     <span class="history-item-date">${escapeHtml(item.date)}</span>
                 </div>
                 <div class="history-item-meta">
-                    ${t('candidate_label')}: ${escapeHtml(item.data.candidate_name || t('not_specified'))} | ${t('match_label')}: <span class="green-text" style="font-weight:600;">${Math.round(item.data.skill_analysis.matching_score)}%</span>
+                    ${t('candidate_label')}: ${escapeHtml(item.data.candidate_name || t('not_specified'))} | ${t('match_label')}: <span class="green-text u-bold">${Math.round(item.data.skill_analysis.matching_score)}%</span>
                 </div>
             `;
             resumeContainer.appendChild(card);
@@ -1590,7 +1626,7 @@ async function renderHistory() {
 
     // Render Interview history
     if (intHistory.length === 0) {
-        interviewContainer.innerHTML = `<p class="text-muted" style="padding: 1.5rem; text-align: center;">${t('no_interview_history')}</p>`;
+        interviewContainer.innerHTML = `<p class="text-muted u-empty-state">${t('no_interview_history')}</p>`;
     } else {
         interviewContainer.innerHTML = '';
         intHistory.forEach(item => {
@@ -1603,7 +1639,7 @@ async function renderHistory() {
                     <span class="history-item-date">${escapeHtml(item.date)}</span>
                 </div>
                 <div class="history-item-meta">
-                    ${t('score_label')}: <span class="green-text" style="font-weight:600;">${escapeHtml(String(item.feedback.score))}/10</span> | ${t('difficulty_label')}: ${escapeHtml(item.question.difficulty.toUpperCase())}
+                    ${t('score_label')}: <span class="green-text u-bold">${escapeHtml(String(item.feedback.score))}/10</span> | ${t('difficulty_label')}: ${escapeHtml(item.question.difficulty.toUpperCase())}
                 </div>
             `;
             interviewContainer.appendChild(card);
@@ -1655,7 +1691,7 @@ async function loadBenchmarkData() {
         
         const res = await response.json();
         if (!res.success) {
-            tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--color-danger);">${escapeHtml(res.error)}</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="6" class="u-cell-error">${escapeHtml(res.error)}</td></tr>`;
             return;
         }
         
@@ -1664,7 +1700,7 @@ async function loadBenchmarkData() {
         
     } catch (error) {
         console.error('Load benchmark data error:', error);
-        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--color-danger);">${t('benchmark_error')}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="6" class="u-cell-error">${t('benchmark_error')}</td></tr>`;
     }
 }
 
@@ -1724,11 +1760,11 @@ function processAndRenderBenchmarks(rawRuns) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${escapeHtml(s.name)}</strong></td>
-            <td><span class="green-text" style="font-weight:600;">${s.tps.toFixed(1)} tok/s</span></td>
+            <td><span class="green-text u-bold">${s.tps.toFixed(1)} tok/s</span></td>
             <td>${s.ttft.toFixed(3)}s</td>
             <td>${s.vram > 0 ? s.vram.toFixed(0) + ' MB' : '0 MB (CPU)'}</td>
             <td>${s.ram.toFixed(0)} MB</td>
-            <td><span class="badge" style="background:${s.compliance === 100 ? 'var(--color-success-glow)' : 'rgba(255,255,255,0.05)'}; border-color:${s.compliance === 100 ? 'var(--color-success)' : 'var(--border-glass)'}">${s.compliance.toFixed(0)}%</span></td>
+            <td><span class="badge ${s.compliance === 100 ? 'badge-compliance-full' : 'badge-compliance-partial'}">${s.compliance.toFixed(0)}%</span></td>
         `;
         tableBody.appendChild(tr);
     });
@@ -1759,7 +1795,7 @@ function renderTpsChart(summary, maxTps) {
         row.innerHTML = `
             <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track">
-                <div class="bar-fill" style="width: 0%"></div>
+                <div class="bar-fill"></div>
             </div>
             <div class="bar-value">${s.tps.toFixed(1)} t/s</div>
         `;
@@ -1789,7 +1825,7 @@ function renderTtftChart(summary, maxTtft) {
         row.innerHTML = `
             <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track">
-                <div class="bar-fill warning" style="width: 0%"></div>
+                <div class="bar-fill warning"></div>
             </div>
             <div class="bar-value">${s.ttft.toFixed(3)}s</div>
         `;
@@ -1818,11 +1854,11 @@ function renderMemoryChart(summary, maxMem) {
         row.className = 'chart-bar-row';
         row.innerHTML = `
             <div class="bar-label">${escapeHtml(s.name)}</div>
-            <div class="bar-track" style="display:flex; border:none; background:transparent;">
-                <div class="bar-fill" style="width: 0%; border-radius: 4px 0 0 4px; background:var(--color-primary);"></div>
-                <div class="bar-fill warning" style="width: 0%; border-radius: 0 4px 4px 0; background:var(--color-info);"></div>
+            <div class="bar-track bar-track--split">
+                <div class="bar-fill bar-fill--vram"></div>
+                <div class="bar-fill bar-fill--ram"></div>
             </div>
-            <div class="bar-value" style="font-size:0.75rem;">${total.toFixed(0)}MB</div>
+            <div class="bar-value u-font-sm">${total.toFixed(0)}MB</div>
         `;
         container.appendChild(row);
         
@@ -1854,7 +1890,7 @@ function renderComplianceChart(summary) {
         row.innerHTML = `
             <div class="bar-label">${escapeHtml(s.name)}</div>
             <div class="bar-track">
-                <div class="bar-fill ${escapeHtml(barClass)}" style="width: 0%"></div>
+                <div class="bar-fill ${escapeHtml(barClass)}"></div>
             </div>
             <div class="bar-value">${s.compliance.toFixed(0)}%</div>
         `;

@@ -8,7 +8,7 @@
 [![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063)](https://docs.pydantic.dev)
 [![Coverage](https://img.shields.io/badge/coverage-72%25-yellowgreen)](tests/)
 [![Security Audit](https://img.shields.io/badge/security%20audit-passed-brightgreen)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue)](CHANGELOG.md)
 
 > **Private by design.** A production-grade AI assistant that runs entirely on your local machine — no cloud, no telemetry, no data leaving your device. Optimize resumes, practice interviews with real-time streaming coaching, and search your documents using local SLMs via Ollama.
 
@@ -286,7 +286,7 @@ This project has undergone an internal security audit (application-layer pentest
 |---|---|
 | **No telemetry** | All inference runs locally via Ollama. Resume text never leaves the machine. |
 | **XSS prevention** | `escapeHtml()` applied to all `innerHTML` interpolations of LLM/user data in the frontend |
-| **Content Security Policy** | Scoped CSP on every response (self + cdnjs + Google Fonts only) |
+| **Content Security Policy** | Scoped CSP on every response (self + cdnjs + Google Fonts only), no `'unsafe-inline'` on `script-src` or `style-src` — all UI wiring uses `addEventListener` and CSS classes |
 | **Security headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `X-XSS-Protection`, `Permissions-Policy` |
 | **Rate limiting** | Sliding-window per-IP rate limiter, scoped to inference/mutating routes only; HTTP 429 with `Retry-After: 60` on breach |
 | **Optional API-key auth** | Set `API_KEY` to require a matching `X-API-Key` header on `/analyze-resume`, `/interview/*`, and `/api/rag/*` — required once the app is reachable beyond `127.0.0.1` |
@@ -313,7 +313,7 @@ pytest tests/test_structured.py::TestRetryMechanism -v
 ptw tests/
 ```
 
-**56 tests** covering:
+**58 tests** covering:
 
 - Pydantic model validation and field bounds
 - JSON parsing with markdown fences, trailing text, nested objects

@@ -341,6 +341,28 @@ def test_security_headers():
     assert "Permissions-Policy" in response.headers
 
 
+def test_csp_has_no_unsafe_inline():
+    """Regression test for SECURITY.md F-6: the frontend has no inline
+    <script>/<style> blocks or onclick=/style= HTML attributes, so CSP
+    shouldn't need 'unsafe-inline' for either directive."""
+    client = TestClient(app)
+    csp = client.get("/").headers["Content-Security-Policy"]
+    assert "'unsafe-inline'" not in csp
+
+
+def test_static_assets_have_no_inline_handlers_or_styles():
+    """Regression test for SECURITY.md F-6: onclick=/onchange=/style= attributes
+    were moved to addEventListener bindings (app.js) and CSS classes (styles.css)."""
+    client = TestClient(app)
+    html = client.get("/").text
+    assert "onclick=" not in html
+    assert "onchange=" not in html
+    assert 'style="' not in html
+
+    app_js = client.get("/static/app.js").text
+    assert 'style="' not in app_js
+
+
 @pytest.mark.asyncio
 async def test_async_client_lifecycle():
     from src.assistant import close_async_client, get_async_client

@@ -6,6 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
+## [1.2.1] — 2026-07-03
+
+Closes F-6 from [SECURITY.md](SECURITY.md), the last open medium-severity finding from the audit.
+
+### Security
+- **CSP no longer needs `'unsafe-inline'` on `script-src` or `style-src`** — the frontend had no inline `<script>`/`<style>` blocks, but did have 17 `onclick=`/`onchange=` HTML attributes and 19 inline `style="..."` attributes, both of which require `'unsafe-inline'` to function. Converted all of them:
+  - `onclick`/`onchange` attributes → `addEventListener` bindings, wired up once in a new `bindStaticEventListeners()` in `app.js`
+  - Inline `style="..."` attributes → new CSS classes/modifiers in `styles.css` (`.streaming-content-box`, `.history-list-container`, `.badge-neutral`, `.badge-compliance-full/partial`, `.bar-fill--vram/ram`, `.bar-track--split`, and small `.u-*` utility classes)
+  - No visual or behavioral change — this is a pure hardening refactor of *how* the same UI wiring happens
+
+### Added
+- 2 new regression tests asserting the CSP has no `'unsafe-inline'` and the served HTML/JS have no inline handlers or style attributes
+
+### Changed
+- Version bumped to `1.2.1`
+
+---
+
 ## [1.2.0] — 2026-07-03
 
 Fixes from an internal security audit (see [SECURITY.md](SECURITY.md) for the full report). The 1.1.0 error-sanitisation work above covered generic exception text, but missed a specific case: `httpx` stringifies failed requests as their full URL, and Gemini's REST API takes its key as a `?key=` query parameter — so a failed Gemini call could still leak the real API key to whoever triggered it.

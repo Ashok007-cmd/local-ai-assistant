@@ -1017,6 +1017,7 @@ body {
 }
 
 .bar-fill {
+    width: 0;
     height: 100%;
     background: linear-gradient(90deg, var(--color-primary), var(--color-info));
     border-radius: 3px;
@@ -1376,5 +1377,98 @@ body {
 .history-item-meta {
     font-size: 0.8rem;
     color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * CSP hardening: classes below replace inline `style="..."` attributes so the
+ * Content-Security-Policy `style-src` directive can drop 'unsafe-inline'.
+ * ------------------------------------------------------------------------- */
+
+.text-muted {
+    color: var(--text-muted);
+}
+
+.streaming-content-box {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    min-height: 100px;
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    border: 1px solid var(--border-glass);
+}
+
+.progress-bar-container--full {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+.progress-bar-fill--streaming {
+    width: 100%;
+    animation: pulse-glow 1.5s infinite ease-in-out;
+}
+
+.history-list-container {
+    max-height: 500px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.bar-track--split {
+    display: flex;
+    border: none;
+    background: transparent;
+}
+
+.bar-fill--vram {
+    background: var(--color-primary);
+    border-radius: 4px 0 0 4px;
+}
+
+.bar-fill--ram {
+    background: var(--color-info);
+    border-radius: 0 4px 4px 0;
+}
+
+.badge-neutral {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.badge-compliance-full {
+    background: var(--color-success-glow);
+    border-color: var(--color-success);
+}
+
+.badge-compliance-partial {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-glass);
+}
+
+.u-text-center {
+    text-align: center;
+}
+
+.u-empty-state {
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.u-cell-error {
+    text-align: center;
+    color: var(--color-danger);
+}
+
+.u-bold {
+    font-weight: 600;
+}
+
+.u-font-sm {
+    font-size: 0.75rem;
 }
 
