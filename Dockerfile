@@ -1,5 +1,7 @@
 # Stage 1: Build dependencies
-FROM python:3.12-slim AS builder
+# python:3.12-slim, digest-pinned (see SECURITY.md F-9). Renovate/Dependabot bump
+# this by re-resolving the tag, not by hand-editing the hash.
+FROM python:3.12-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -16,7 +18,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Stage 2: Final runtime image
-FROM python:3.12-slim AS runner
+FROM python:3.12-slim@sha256:423ed6ab25b1921a477529254bfeeabf5855151dc2c3141699a1bfc852199fbf AS runner
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1

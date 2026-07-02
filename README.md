@@ -8,7 +8,7 @@
 [![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063)](https://docs.pydantic.dev)
 [![Coverage](https://img.shields.io/badge/coverage-72%25-yellowgreen)](tests/)
 [![Security Audit](https://img.shields.io/badge/security%20audit-passed-brightgreen)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-1.2.1-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.2-blue)](CHANGELOG.md)
 
 > **Private by design.** A production-grade AI assistant that runs entirely on your local machine — no cloud, no telemetry, no data leaving your device. Optimize resumes, practice interviews with real-time streaming coaching, and search your documents using local SLMs via Ollama.
 
@@ -192,7 +192,7 @@ docker run -p 8000:8000 ghcr.io/ashok007-cmd/local-ai-assistant:main
 
 The compose file maps `host.docker.internal → host-gateway` so the container can reach Ollama on your host.
 
-The image runs as **uid 10001** (non-root `appuser`), uses a multi-stage build to minimise attack surface, and includes a Python `urllib` healthcheck to avoid adding `curl` to the image.
+The image runs as **uid 10001** (non-root `appuser`), uses a multi-stage build to minimise attack surface, pins the `python:3.12-slim` base image by `sha256` digest (not a floating tag), and includes a Python `urllib` healthcheck to avoid adding `curl` to the image.
 
 ---
 

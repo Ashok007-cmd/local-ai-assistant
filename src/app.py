@@ -107,7 +107,7 @@ app = FastAPI(
         "- SQLite WAL cache eliminates repeat inference cost.\n\n"
         "Interactive docs: [/docs](/docs) · OpenAPI spec: [/openapi.json](/openapi.json)"
     ),
-    version="1.2.1",
+    version="1.2.2",
     contact={
         "name": "Ashok Kumar",
         "url": "https://github.com/Ashok007-cmd/local-ai-assistant",

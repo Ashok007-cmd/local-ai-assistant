@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
+## [1.2.2] — 2026-07-03
+
+Closes F-9 from [SECURITY.md](SECURITY.md). Only F-7 (broad `except Exception` in cache/RAG paths — a deliberate cache-miss-fallback design choice) remains open.
+
+### Security
+- **Docker base image pinned by digest** — `python:3.12-slim` in both Dockerfile stages now pins `@sha256:...` instead of a floating tag, so a build today and a build next year use the identical base image
+- **GitHub Actions pinned by commit SHA** — all 6 actions across `ci.yml` and `docker-publish.yml` (`actions/checkout`, `actions/setup-python`, `codecov/codecov-action`, `docker/login-action`, `docker/metadata-action`, `docker/build-push-action`) pinned to a commit SHA with a `# vX.Y.Z` comment for readability, instead of a mutable major-version tag
+- Both the Docker `docker` and `github-actions` Dependabot ecosystems (added in the previous release) keep these pins current automatically
+
+### Changed
+- Version bumped to `1.2.2`
+
+---
+
 ## [1.2.1] — 2026-07-03
 
 Closes F-6 from [SECURITY.md](SECURITY.md), the last open medium-severity finding from the audit.

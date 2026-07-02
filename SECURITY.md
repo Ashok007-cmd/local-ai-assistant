@@ -22,7 +22,7 @@ Open a GitHub issue or contact the maintainer directly for anything sensitive �
 | F-6 | Medium | CSP allows `'unsafe-inline'` for scripts/styles | **Fixed** — 17 `onclick`/`onchange` HTML attributes converted to `addEventListener` bindings, 19 inline `style="..."` attributes moved to CSS classes; `'unsafe-inline'` dropped from both `script-src` and `style-src` |
 | F-7 | Medium | Broad `except Exception` in cache/RAG DB paths swallows errors silently | Open — acceptable as a cache-miss fallback today; tracked for observability follow-up |
 | F-8 | Medium | `CORS allow_credentials=True` with no cookie/session auth in use | **Fixed** — disabled |
-| F-9 | Low | Docker base image / GitHub Actions pinned by tag, not digest/SHA | Open — tracked |
+| F-9 | Low | Docker base image / GitHub Actions pinned by tag, not digest/SHA | **Fixed** — `python:3.12-slim` pinned by `sha256` digest in both Dockerfile stages; all 6 GitHub Actions steps (`actions/checkout`, `actions/setup-python`, `codecov/codecov-action`, `docker/login-action`, `docker/metadata-action`, `docker/build-push-action`) pinned by commit SHA with a version comment. Dependabot (added for F-10) keeps both current. |
 | F-10 | Low | No automated dependency/image vulnerability scanning in CI | **Fixed** — `pip-audit` added to CI on every push; GitHub Dependabot alerts, security updates, and weekly version-update PRs (pip, GitHub Actions, Docker) enabled on the repo |
 
 ## Scan results (this audit)
