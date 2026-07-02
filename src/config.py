@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     RAG_DB_PATH: str = Field(default="benchmarks/rag.db")
 
     # Security settings
+    # Optional shared-secret API key. When set, mutating endpoints (resume/interview/rag)
+    # require a matching `X-API-Key` header. Empty (default) preserves open local-only usage.
+    API_KEY: str = Field(default="")
+
     CORS_ORIGINS: list[str] = Field(
         default=[
             "http://localhost:3000",

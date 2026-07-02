@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
+## [1.2.0] — 2026-07-03
+
+Fixes from an internal security audit (see [SECURITY.md](SECURITY.md) for the full report). The 1.1.0 error-sanitisation work above covered generic exception text, but missed a specific case: `httpx` stringifies failed requests as their full URL, and Gemini's REST API takes its key as a `?key=` query parameter — so a failed Gemini call could still leak the real API key to whoever triggered it.
+
+### Security
+- **Critical: Gemini API key no longer travels in the request URL** — moved from `?key=...` query parameter to the `x-goog-api-key` header, so it structurally cannot appear in `httpx` exception text, proxy logs, or access logs. Verified with a live request against a real failing call before and after the fix.
+- **All outbound-request errors sanitised before reaching a client** — `_sanitize_error_message()` redacts any `key=` query parameter from exception text as defense-in-depth, applied at every call site that used to format raw exceptions into a client-facing `errors` list (6 sites in `assistant.py`, plus the SSE error event in `interview.py`)
+- **Gemini model names validated against an allow-list** before being spliced into the outbound request URL, closing an unvalidated-input-in-URL path and turning a silent 3-retry failure into an immediate, clear error
+- **Optional shared-secret API-key auth** (`API_KEY` env var) for `/analyze-resume`, `/interview/*`, `/api/rag/*` — required once the app is reachable beyond `127.0.0.1`; no-op by default so local usage is unaffected
+- **Rate limiter no longer shares budget with health checks and static assets** — `/health`, `/docs`, `/openapi.json`, `/static/*` are exempt from the per-IP limiter, which previously let a single page load exhaust most of the default 60 req/min budget before any inference call was made
+- **Rate-limiter memory bounded** — expired per-IP buckets are now swept periodically instead of growing unboundedly for the lifetime of the process
+- **`CORS allow_credentials` disabled** — was `True` with no cookie/session auth in use, needlessly widening the CORS attack surface
+
+### Added
+- `SECURITY.md` — full audit findings, severity, and fix status
+- 7 new regression tests covering the above (`TestSecurityFixes`, `TestApiKeyAuth`, `TestRateLimitExemptions`)
+
+### Changed
+- Version bumped to `1.2.0`
+
+---
+
 ## [1.1.0] — 2026-06-28
 
 ### Security

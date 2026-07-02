@@ -2,11 +2,18 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
 from src.app import app
-from src.assistant import LLMClient, convert_to_gemini_schema, resolve_schema_refs
+from src.assistant import (
+    ALLOWED_GEMINI_MODELS,
+    LLMClient,
+    _sanitize_error_message,
+    convert_to_gemini_schema,
+    resolve_schema_refs,
+)
 from src.models import InterviewFeedback, InterviewQuestion
 
 
@@ -346,5 +353,100 @@ async def test_async_client_lifecycle():
 
     await close_async_client()
     assert client1.is_closed
+
+
+class TestSecurityFixes:
+    """Regression tests for the audit findings: API-key leakage, model allow-listing,
+    optional API-key auth, and rate-limiter path exemptions."""
+
+    def test_sanitize_error_message_redacts_gemini_key(self):
+        req = httpx.Request(
+            "POST",
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+            "?key=AIzaREALSECRETVALUE12345",
+        )
+        resp = httpx.Response(400, request=req, json={"error": "bad request"})
+        try:
+            resp.raise_for_status()
+            raise AssertionError("expected raise_for_status to raise")
+        except httpx.HTTPStatusError as e:
+            sanitized = _sanitize_error_message(e)
+
+        assert "AIzaREALSECRETVALUE12345" not in sanitized
+        assert "key=[REDACTED]" in sanitized
+
+    @patch("src.assistant.settings")
+    @patch("httpx.Client.post")
+    def test_gemini_request_never_puts_key_in_url(self, mock_post, mock_settings):
+        """The API key must travel as a header, never as a `?key=` query param,
+        so it can't end up in logs, proxies, or (via F-1) client-facing errors."""
+        mock_settings.GEMINI_API_KEY = "dummy-key"
+        mock_settings.LLM_MAX_RETRIES = 1
+        mock_settings.LLM_TIMEOUT = 120.0
+
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        feedback_json = (
+            '{"score": 5.0, "strengths": [], "weaknesses": [], '
+            '"suggested_answer_framework": null, "missed_keywords": []}'
+        )
+        mock_response.json.return_value = {
+            "candidates": [{"content": {"parts": [{"text": feedback_json}]}}]
+        }
+        mock_post.return_value = mock_response
+
+        client = LLMClient(model="gemini-1.5-flash")
+        client.generate_structured(prompt="Test", schema=InterviewFeedback)
+
+        called_url = mock_post.call_args.args[0]
+        called_headers = mock_post.call_args.kwargs.get("headers", {})
+        assert "key=" not in called_url
+        assert called_headers.get("x-goog-api-key") == "dummy-key"
+
+    @patch("src.assistant.settings")
+    def test_unknown_gemini_model_rejected(self, mock_settings):
+        mock_settings.GEMINI_API_KEY = "dummy-key"
+        client = LLMClient(model="gemini-not-a-real-model")
+        with pytest.raises(ValueError, match="Unsupported Gemini model"):
+            client._query_gemini("prompt")
+
+    def test_allowed_gemini_models_is_nonempty(self):
+        assert "gemini-1.5-flash" in ALLOWED_GEMINI_MODELS
+
+
+class TestApiKeyAuth:
+    def test_endpoints_open_by_default(self):
+        """API_KEY unset (default) — mutating endpoints stay open for local use."""
+        client = TestClient(app)
+        response = client.post("/api/rag/search", json={"query": "test"})
+        assert response.status_code == 200
+
+    def test_endpoint_rejects_missing_or_wrong_key_when_configured(self):
+        with patch("src.auth.settings") as mock_settings:
+            mock_settings.API_KEY = "shh-secret"
+            client = TestClient(app)
+
+            no_key = client.post("/api/rag/search", json={"query": "test"})
+            assert no_key.status_code == 401
+
+            wrong_key = client.post(
+                "/api/rag/search", json={"query": "test"}, headers={"X-API-Key": "wrong"}
+            )
+            assert wrong_key.status_code == 401
+
+            right_key = client.post(
+                "/api/rag/search", json={"query": "test"}, headers={"X-API-Key": "shh-secret"}
+            )
+            assert right_key.status_code == 200
+
+
+class TestRateLimitExemptions:
+    def test_health_and_static_are_exempt(self):
+        from src.app import _is_rate_limit_exempt
+        assert _is_rate_limit_exempt("/health") is True
+        assert _is_rate_limit_exempt("/docs") is True
+        assert _is_rate_limit_exempt("/openapi.json") is True
+        assert _is_rate_limit_exempt("/static/app.js") is True
+        assert _is_rate_limit_exempt("/analyze-resume") is False
 
 

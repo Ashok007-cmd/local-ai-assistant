@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from src.auth import verify_api_key
 from src.rag_index import rag_index
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["rag"])
+router = APIRouter(tags=["rag"], dependencies=[Depends(verify_api_key)])
 
 class IndexDocumentRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=1000)

@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
+from src.assistant import _sanitize_error_message
+from src.auth import verify_api_key
 from src.config import settings
 from src.models import (
     InterviewFeedback,
@@ -17,7 +19,7 @@ from src.routers._client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["interview"])
+router = APIRouter(tags=["interview"], dependencies=[Depends(verify_api_key)])
 
 class InterviewSimulateRequest(BaseModel):
     resume_text: str = Field(..., min_length=50, max_length=100_000)
@@ -217,6 +219,6 @@ async def submit_answer_stream(req: SubmitAnswerRequest):
                 yield f"event: metrics\ndata: {fallback.model_dump_json()}\n\n"
         except Exception as e:
             logger.error("Error in streaming interview feedback: %s", e)
-            yield f"event: error\ndata: {json.dumps(str(e))}\n\n"
+            yield f"event: error\ndata: {json.dumps(_sanitize_error_message(e))}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

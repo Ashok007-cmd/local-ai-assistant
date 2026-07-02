@@ -6,8 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688)](https://fastapi.tiangolo.com)
 [![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063)](https://docs.pydantic.dev)
-[![Coverage](https://img.shields.io/badge/coverage-71%25-yellowgreen)](tests/)
-[![Version](https://img.shields.io/badge/version-1.1.0-blue)](CHANGELOG.md)
+[![Coverage](https://img.shields.io/badge/coverage-72%25-yellowgreen)](tests/)
+[![Security Audit](https://img.shields.io/badge/security%20audit-passed-brightgreen)](SECURITY.md)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue)](CHANGELOG.md)
 
 > **Private by design.** A production-grade AI assistant that runs entirely on your local machine — no cloud, no telemetry, no data leaving your device. Optimize resumes, practice interviews with real-time streaming coaching, and search your documents using local SLMs via Ollama.
 
@@ -250,12 +251,13 @@ All settings are environment variables (loaded from `.env` via `pydantic-setting
 | `LLM_MAX_RETRIES` | `3` | Retry attempts for invalid/malformed LLM output |
 | `LLM_MAX_CONCURRENCY` | `1` | Max simultaneous inference requests (semaphore) |
 | `GEMINI_API_KEY` | *(empty)* | Google Gemini API key — enables cloud models |
+| `API_KEY` | *(empty)* | Shared-secret key. When set, requires a matching `X-API-Key` header on `/analyze-resume`, `/interview/*`, `/api/rag/*` |
 | `CACHE_DB_PATH` | `benchmarks/cache.db` | SQLite path for the LLM response cache |
 | `RAG_DB_PATH` | `benchmarks/rag.db` | SQLite path for the FTS5 RAG index |
 | `CACHE_TTL_HOURS` | `24` | Cache entry lifetime in hours |
 | `CORS_ORIGINS` | `http://localhost:8000,...` | Comma-separated allowed CORS origins |
 | `MAX_UPLOAD_SIZE` | `2097152` | Max request body in bytes (2 MB) |
-| `RATE_LIMIT_RPM` | `60` | Max requests per minute per IP (0 = disabled) |
+| `RATE_LIMIT_RPM` | `60` | Max requests per minute per IP on inference routes (0 = disabled); `/health`, `/docs`, `/static/*` are exempt |
 | `LOG_FORMAT` | `text` | Set to `json` for structured machine-readable logs |
 
 ---
@@ -278,18 +280,23 @@ Models prefixed with `gemini-` are automatically routed to the Gemini API; all o
 
 ## Security
 
+This project has undergone an internal security audit (application-layer pentest + dependency/SAST scan). See **[SECURITY.md](SECURITY.md)** for the full findings and fixes — including one confirmed-via-live-request critical issue (Gemini API key disclosure through error messages) that has since been patched and regression-tested.
+
 | Control | Implementation |
 |---|---|
 | **No telemetry** | All inference runs locally via Ollama. Resume text never leaves the machine. |
 | **XSS prevention** | `escapeHtml()` applied to all `innerHTML` interpolations of LLM/user data in the frontend |
 | **Content Security Policy** | Scoped CSP on every response (self + cdnjs + Google Fonts only) |
 | **Security headers** | `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `X-XSS-Protection`, `Permissions-Policy` |
-| **Rate limiting** | Sliding-window per-IP rate limiter; HTTP 429 with `Retry-After: 60` on breach |
+| **Rate limiting** | Sliding-window per-IP rate limiter, scoped to inference/mutating routes only; HTTP 429 with `Retry-After: 60` on breach |
+| **Optional API-key auth** | Set `API_KEY` to require a matching `X-API-Key` header on `/analyze-resume`, `/interview/*`, and `/api/rag/*` — required once the app is reachable beyond `127.0.0.1` |
 | **Request size limit** | Payloads > 2 MB rejected with HTTP 413 (configurable via `MAX_UPLOAD_SIZE`) |
-| **CORS** | Defaults to localhost only; never ships with wildcard `*` |
+| **CORS** | Defaults to localhost only, credential-less; never ships with wildcard `*` |
 | **Non-root Docker** | Container runs as uid `10001` (`appuser`), not root |
 | **No innerHTML with untrusted content** | LLM text uses DOM `textContent` or `escapeHtml()` — never raw interpolation |
-| **Secrets never in URL** | Internal errors logged server-side only; not forwarded to HTTP clients |
+| **Secrets never in URLs or error responses** | Gemini API key travels as an `x-goog-api-key` header, never a URL query param; all outbound-request exceptions are sanitized before reaching a client-facing error |
+| **Model allow-listing** | Gemini model names are validated against a fixed allow-list before being used to build an outbound request URL |
+| **Dependency scanning** | `pip-audit` + `bandit` run as part of the audit workflow; CI runs `pip-audit` on every push |
 
 ---
 
@@ -306,7 +313,7 @@ pytest tests/test_structured.py::TestRetryMechanism -v
 ptw tests/
 ```
 
-**49 tests** covering:
+**56 tests** covering:
 
 - Pydantic model validation and field bounds
 - JSON parsing with markdown fences, trailing text, nested objects
@@ -318,6 +325,7 @@ ptw tests/
 - i18n fallbacks (German and Spanish streaming error messages)
 - Request size-limit middleware (HTTP 413)
 - Gemini schema conversion (`resolve_schema_refs`, `convert_to_gemini_schema`)
+- Security regressions: API-key never appears in outbound URLs or client-facing errors, Gemini model allow-listing, optional `X-API-Key` auth, rate-limit path exemptions
 
 ---
 
@@ -328,6 +336,7 @@ local-ai-assistant/
 ├── src/
 │   ├── app.py              # FastAPI app, middleware stack, lifespan hooks
 │   ├── assistant.py        # LLMClient — Ollama + Gemini, retry, streaming, cache
+│   ├── auth.py             # Optional X-API-Key enforcement (no-op unless API_KEY is set)
 │   ├── cache.py            # SQLite WAL response cache (thread-local connections)
 │   ├── config.py           # Pydantic BaseSettings — typed env config with .env loading
 │   ├── models.py           # Pydantic schemas: ResumeAnalysisResult, InterviewQuestion, etc.
@@ -358,6 +367,7 @@ local-ai-assistant/
 ├── pyproject.toml          # ruff (E,W,F,I,B,UP) + Black + pytest-asyncio config
 ├── .env.example            # All config variables with safe defaults (no wildcard CORS)
 ├── CHANGELOG.md            # Keep-a-Changelog format, semver
+├── SECURITY.md             # Audit findings register, scan results, fix status
 ├── CONTRIBUTING.md         # Fork → branch → PR workflow
 └── CODE_OF_CONDUCT.md      # Contributor Covenant
 ```

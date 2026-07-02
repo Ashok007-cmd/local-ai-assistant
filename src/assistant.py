@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import random
+import re
 import time
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -23,6 +24,28 @@ from src.models import ResumeAnalysisResult, parse_llm_json_output
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+
+# Gemini models this app knows how to route to. Rejecting anything else before it
+# reaches the outbound URL avoids splicing an unvalidated user string into an
+# authenticated request path.
+ALLOWED_GEMINI_MODELS = frozenset({"gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"})
+
+_KEY_QUERY_PARAM_RE = re.compile(r"([?&]key=)[^&\s'\"]+")
+
+
+def _sanitize_error_message(e: Exception) -> str:
+    """Return a client-safe error string.
+
+    httpx exceptions stringify to include the full request URL, which for Gemini
+    contains `?key=<API key>` — never let that reach an HTTP response. Any other
+    query-string `key=` param is redacted the same way as defense in depth.
+    """
+    return _KEY_QUERY_PARAM_RE.sub(r"\1[REDACTED]", str(e))
+
+
+def _validate_gemini_model(model: str) -> None:
+    if model not in ALLOWED_GEMINI_MODELS:
+        raise ValueError(f"Unsupported Gemini model: {model!r}. Allowed: {sorted(ALLOWED_GEMINI_MODELS)}")
 
 # Global semaphore to limit concurrent inference requests to Ollama
 _global_semaphore = asyncio.Semaphore(settings.LLM_MAX_CONCURRENCY)
@@ -208,12 +231,13 @@ class LLMClient:
         """Send a prompt to the Google Gemini API synchronously."""
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not configured.")
+        _validate_gemini_model(self.model)
 
         model_name = self.model
         if "/" not in model_name:
             model_name = f"models/{model_name}"
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent"
 
         contents = [{
             "role": "user",
@@ -242,7 +266,7 @@ class LLMClient:
         payload["generationConfig"] = generation_config
 
         with httpx.Client(timeout=self.timeout) as client:
-            response = client.post(url, json=payload)
+            response = client.post(url, json=payload, headers={"x-goog-api-key": settings.GEMINI_API_KEY})
             response.raise_for_status()
             result = response.json()
 
@@ -298,7 +322,7 @@ class LLMClient:
                     last_raw = self._query_gemini(prompt, system_prompt=system_prompt, schema=schema)
                 except Exception as e:
                     logger.warning("Gemini query failed on attempt %d: %s", attempt, e)
-                    errors.append(f"API error: {e}")
+                    errors.append(f"API error: {_sanitize_error_message(e)}")
                     self._sleep_with_backoff(attempt)
                     continue
 
@@ -388,7 +412,7 @@ class LLMClient:
                 last_raw = self._query_ollama(current_prompt, system_prompt=system_prompt, format="json")
             except Exception as e:
                 logger.warning("Ollama query failed on attempt %d: %s", attempt, e)
-                errors.append(f"API error: {e}")
+                errors.append(f"API error: {_sanitize_error_message(e)}")
                 self._sleep_with_backoff(attempt)
                 continue
 
@@ -499,7 +523,7 @@ class LLMClient:
                 last_raw = self._query_ollama_chat(current_messages, format="json")
             except Exception as e:
                 logger.warning("Chat query failed on attempt %d: %s", attempt, e)
-                errors.append(f"API error: {e}")
+                errors.append(f"API error: {_sanitize_error_message(e)}")
                 self._sleep_with_backoff(attempt)
                 continue
 
@@ -613,12 +637,13 @@ class LLMClient:
         """Send a prompt to the Google Gemini API asynchronously."""
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not configured.")
+        _validate_gemini_model(self.model)
 
         model_name = self.model
         if "/" not in model_name:
             model_name = f"models/{model_name}"
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={settings.GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent"
 
         contents = [{
             "role": "user",
@@ -647,7 +672,7 @@ class LLMClient:
         payload["generationConfig"] = generation_config
 
         client = get_async_client()
-        response = await client.post(url, json=payload)
+        response = await client.post(url, json=payload, headers={"x-goog-api-key": settings.GEMINI_API_KEY})
         response.raise_for_status()
         result = response.json()
 
@@ -672,10 +697,11 @@ class LLMClient:
         if self.model.startswith("gemini-"):
             if not settings.GEMINI_API_KEY:
                 raise ValueError("GEMINI_API_KEY is not configured.")
+            _validate_gemini_model(self.model)
             model_name = self.model
             if "/" not in model_name:
                 model_name = f"models/{model_name}"
-            url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:streamGenerateContent?key={settings.GEMINI_API_KEY}&alt=sse"
+            url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:streamGenerateContent?alt=sse"
 
             payload = {
                 "contents": [{"role": "user", "parts": [{"text": prompt}]}],
@@ -684,7 +710,8 @@ class LLMClient:
                 payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
 
             client = get_async_client()
-            async with client.stream("POST", url, json=payload) as response:
+            headers = {"x-goog-api-key": settings.GEMINI_API_KEY}
+            async with client.stream("POST", url, json=payload, headers=headers) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
                     line = line.strip()
@@ -765,7 +792,7 @@ class LLMClient:
                         last_raw = await self._query_gemini_async(prompt, system_prompt=system_prompt, schema=schema)
                     except Exception as e:
                         logger.warning("Gemini async query failed on attempt %d: %s", attempt, e)
-                        errors.append(f"API error: {e}")
+                        errors.append(f"API error: {_sanitize_error_message(e)}")
                         await self._sleep_with_backoff_async(attempt)
                         continue
 
@@ -868,7 +895,7 @@ class LLMClient:
                     )
                 except Exception as e:
                     logger.warning("Ollama async query failed on attempt %d: %s", attempt, e)
-                    errors.append(f"API error: {e}")
+                    errors.append(f"API error: {_sanitize_error_message(e)}")
                     await self._sleep_with_backoff_async(attempt)
                     continue
 
@@ -978,7 +1005,7 @@ class LLMClient:
                     last_raw = await self._query_ollama_chat_async(current_messages, format="json")
                 except Exception as e:
                     logger.warning("Chat async query failed on attempt %d: %s", attempt, e)
-                    errors.append(f"API error: {e}")
+                    errors.append(f"API error: {_sanitize_error_message(e)}")
                     await self._sleep_with_backoff_async(attempt)
                     continue
 

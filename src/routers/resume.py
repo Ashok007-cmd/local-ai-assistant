@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from src.assistant import default_resume_fallback
+from src.auth import verify_api_key
 from src.config import settings
 from src.models import ResumeAnalysisResult
 from src.routers._client import get_llm_client
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["resume"])
+router = APIRouter(tags=["resume"], dependencies=[Depends(verify_api_key)])
 
 class AnalyzeResumeRequest(BaseModel):
     resume_text: str = Field(..., min_length=50, max_length=100_000)

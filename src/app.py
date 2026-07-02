@@ -37,9 +37,23 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _rate_buckets: dict[str, collections.deque] = collections.defaultdict(collections.deque)
 
+# Paths that never count against the per-IP rate-limit budget: cheap, high-frequency,
+# and not LLM-backed, so they shouldn't compete with expensive inference calls for the
+# same request budget (a single page load otherwise burns most of the default 60 rpm).
+_RATE_LIMIT_EXEMPT_PREFIXES = ("/static/",)
+_RATE_LIMIT_EXEMPT_PATHS = frozenset({"/health", "/docs", "/redoc", "/openapi.json"})
+
+
+def _is_rate_limit_exempt(path: str) -> bool:
+    return path in _RATE_LIMIT_EXEMPT_PATHS or path.startswith(_RATE_LIMIT_EXEMPT_PREFIXES)
+
+
+_rate_limit_check_count = 0
+
 
 def _is_rate_limited(ip: str) -> bool:
     """Return True if *ip* has exceeded RATE_LIMIT_RPM in the last 60 seconds."""
+    global _rate_limit_check_count
     if settings.RATE_LIMIT_RPM <= 0:
         return False
     now = time.monotonic()
@@ -47,10 +61,24 @@ def _is_rate_limited(ip: str) -> bool:
     # Evict timestamps older than 60 s
     while bucket and now - bucket[0] > 60.0:
         bucket.popleft()
-    if len(bucket) >= settings.RATE_LIMIT_RPM:
-        return True
-    bucket.append(now)
-    return False
+    limited = len(bucket) >= settings.RATE_LIMIT_RPM
+    if not limited:
+        bucket.append(now)
+
+    # Bound dict growth: sweep fully-expired IP entries periodically rather than on
+    # every request, so long-running processes don't accumulate one entry per client
+    # IP forever.
+    _rate_limit_check_count += 1
+    if _rate_limit_check_count % 256 == 0:
+        _evict_stale_buckets(now)
+
+    return limited
+
+
+def _evict_stale_buckets(now: float) -> None:
+    stale = [candidate_ip for candidate_ip, bucket in _rate_buckets.items() if not bucket or now - bucket[-1] > 60.0]
+    for candidate_ip in stale:
+        del _rate_buckets[candidate_ip]
 
 
 class HealthResponse(BaseModel):
@@ -79,7 +107,7 @@ app = FastAPI(
         "- SQLite WAL cache eliminates repeat inference cost.\n\n"
         "Interactive docs: [/docs](/docs) · OpenAPI spec: [/openapi.json](/openapi.json)"
     ),
-    version="1.1.0",
+    version="1.2.0",
     contact={
         "name": "Ashok Kumar",
         "url": "https://github.com/Ashok007-cmd/local-ai-assistant",
@@ -99,7 +127,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -108,6 +136,8 @@ app.add_middleware(
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
     """Sliding-window rate limiter: rejects excess requests with HTTP 429."""
+    if _is_rate_limit_exempt(request.url.path):
+        return await call_next(request)
     ip = request.client.host if request.client else "unknown"
     if _is_rate_limited(ip):
         return JSONResponse(
