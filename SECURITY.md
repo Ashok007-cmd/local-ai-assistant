@@ -23,7 +23,7 @@ Open a GitHub issue or contact the maintainer directly for anything sensitive �
 | F-7 | Medium | Broad `except Exception` in cache/RAG DB paths swallows errors silently | Open — acceptable as a cache-miss fallback today; tracked for observability follow-up |
 | F-8 | Medium | `CORS allow_credentials=True` with no cookie/session auth in use | **Fixed** — disabled |
 | F-9 | Low | Docker base image / GitHub Actions pinned by tag, not digest/SHA | Open — tracked |
-| F-10 | Low | No automated dependency/image vulnerability scanning in CI | Open — tracked; `pip-audit` and `bandit` were run manually for this audit |
+| F-10 | Low | No automated dependency/image vulnerability scanning in CI | **Fixed** — `pip-audit` added to CI on every push; GitHub Dependabot alerts, security updates, and weekly version-update PRs (pip, GitHub Actions, Docker) enabled on the repo |
 
 ## Scan results (this audit)
 
