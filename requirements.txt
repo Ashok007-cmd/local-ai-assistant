@@ -6,5 +6,5 @@ uvicorn[standard]>=0.30.0
 python-multipart>=0.0.9
 pytest>=9.0.0
 pytest-asyncio>=0.23.0
-pytest-mock>=3.14.0
+pytest-mock>=3.15.1
 pytest-cov>=5.0.0
