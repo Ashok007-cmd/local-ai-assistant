@@ -12,6 +12,8 @@ Open a GitHub issue or contact the maintainer directly for anything sensitive �
 
 ## Findings
 
+**All 10 findings are fixed** (1 critical, 3 high, 4 medium, 2 low). None are open.
+
 | ID | Severity | Finding | Status |
 |---|---|---|---|
 | F-1 | Critical | Gemini API key disclosed to clients via error messages (confirmed with a live request) | **Fixed** — key moved to `x-goog-api-key` header; all exception text sanitized before reaching a client |
@@ -20,7 +22,7 @@ Open a GitHub issue or contact the maintainer directly for anything sensitive �
 | F-4 | High | Rate limiter shared one budget across health checks, static assets, and LLM calls | **Fixed** — `/health`, `/docs`, `/openapi.json`, `/static/*` exempted |
 | F-5 | Medium | Rate-limiter state unbounded and process-local | **Fixed** — stale per-IP buckets swept periodically |
 | F-6 | Medium | CSP allows `'unsafe-inline'` for scripts/styles | **Fixed** — 17 `onclick`/`onchange` HTML attributes converted to `addEventListener` bindings, 19 inline `style="..."` attributes moved to CSS classes; `'unsafe-inline'` dropped from both `script-src` and `style-src` |
-| F-7 | Medium | Broad `except Exception` in cache/RAG DB paths swallows errors silently | Open — acceptable as a cache-miss fallback today; tracked for observability follow-up |
+| F-7 | Medium | Broad `except Exception` in cache/RAG DB paths swallows errors silently | **Fixed** — the fallback behavior itself is intentional (a cache/index failure should degrade to a miss, not crash a request) and is unchanged; each except-block now increments an `error_count` on `ResponseCache`/`RAGIndex`, surfaced as `cache_errors`/`rag_errors` in `GET /health`, so a rising rate is visible instead of silent |
 | F-8 | Medium | `CORS allow_credentials=True` with no cookie/session auth in use | **Fixed** — disabled |
 | F-9 | Low | Docker base image / GitHub Actions pinned by tag, not digest/SHA | **Fixed** — `python:3.12-slim` pinned by `sha256` digest in both Dockerfile stages; all 6 GitHub Actions steps (`actions/checkout`, `actions/setup-python`, `codecov/codecov-action`, `docker/login-action`, `docker/metadata-action`, `docker/build-push-action`) pinned by commit SHA with a version comment. Dependabot (added for F-10) keeps both current. |
 | F-10 | Low | No automated dependency/image vulnerability scanning in CI | **Fixed** — `pip-audit` added to CI on every push; GitHub Dependabot alerts, security updates, and weekly version-update PRs (pip, GitHub Actions, Docker) enabled on the repo |

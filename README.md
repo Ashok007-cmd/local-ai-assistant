@@ -8,7 +8,7 @@
 [![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063)](https://docs.pydantic.dev)
 [![Coverage](https://img.shields.io/badge/coverage-72%25-yellowgreen)](tests/)
 [![Security Audit](https://img.shields.io/badge/security%20audit-passed-brightgreen)](SECURITY.md)
-[![Version](https://img.shields.io/badge/version-1.2.2-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.2.3-blue)](CHANGELOG.md)
 
 > **Private by design.** A production-grade AI assistant that runs entirely on your local machine — no cloud, no telemetry, no data leaving your device. Optimize resumes, practice interviews with real-time streaming coaching, and search your documents using local SLMs via Ollama.
 
@@ -200,7 +200,7 @@ The image runs as **uid 10001** (non-root `appuser`), uses a multi-stage build t
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/health` | Connectivity check — returns available models and rate-limit config |
+| `GET` | `/health` | Connectivity check — available models, rate-limit config, cache/RAG error counts |
 | `POST` | `/analyze-resume` | Full resume analysis: skill gaps, match score, bullet rewrites, format issues |
 | `POST` | `/interview/generate-questions` | One tailored interview question from resume + role |
 | `POST` | `/interview/submit-answer` | Structured `InterviewFeedback` (score, strengths, missed keywords) |
@@ -297,6 +297,7 @@ This project has undergone an internal security audit (application-layer pentest
 | **Secrets never in URLs or error responses** | Gemini API key travels as an `x-goog-api-key` header, never a URL query param; all outbound-request exceptions are sanitized before reaching a client-facing error |
 | **Model allow-listing** | Gemini model names are validated against a fixed allow-list before being used to build an outbound request URL |
 | **Dependency scanning** | `pip-audit` + `bandit` run as part of the audit workflow; CI runs `pip-audit` on every push |
+| **Failure observability** | Cache/RAG DB failures degrade gracefully (miss/empty result) but increment an error counter surfaced in `GET /health` (`cache_errors`, `rag_errors`), so a rising rate is visible instead of silent |
 
 ---
 
@@ -313,7 +314,7 @@ pytest tests/test_structured.py::TestRetryMechanism -v
 ptw tests/
 ```
 
-**58 tests** covering:
+**61 tests** covering:
 
 - Pydantic model validation and field bounds
 - JSON parsing with markdown fences, trailing text, nested objects
@@ -325,7 +326,7 @@ ptw tests/
 - i18n fallbacks (German and Spanish streaming error messages)
 - Request size-limit middleware (HTTP 413)
 - Gemini schema conversion (`resolve_schema_refs`, `convert_to_gemini_schema`)
-- Security regressions: API-key never appears in outbound URLs or client-facing errors, Gemini model allow-listing, optional `X-API-Key` auth, rate-limit path exemptions
+- Security regressions: API-key never appears in outbound URLs or client-facing errors, Gemini model allow-listing, optional `X-API-Key` auth, rate-limit path exemptions, no inline CSP/HTML handlers, cache/RAG error-count observability
 
 ---
 

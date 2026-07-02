@@ -27,6 +27,11 @@ class ResponseCache:
     def __init__(self, db_path: str = settings.CACHE_DB_PATH, ttl_hours: int = settings.CACHE_TTL_HOURS):
         self.db_path = Path(db_path)
         self.ttl_seconds = ttl_hours * 3600
+        # Counts exceptions swallowed by the broad except-blocks below (corrupt DB,
+        # disk full, permissions, etc). A cache failure degrades to a miss rather than
+        # crashing requests, but a rising count means something's actually wrong —
+        # surfaced via GET /health so it's visible instead of silent. See SECURITY.md F-7.
+        self.error_count = 0
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -57,6 +62,7 @@ class ResponseCache:
                 )
                 conn.commit()
         except Exception as e:
+            self.error_count += 1
             logger.error("Failed to initialize SQLite cache database at %s: %s", self.db_path, e)
 
     def _generate_key(self, prompt: str, schema_name: str, model: str) -> str:
@@ -94,6 +100,7 @@ class ResponseCache:
             logger.info("Cache hit for key %s", key)
             return json.loads(response_json)
         except Exception as e:
+            self.error_count += 1
             logger.warning("Error reading from query cache: %s", e)
             return None
 
@@ -113,6 +120,7 @@ class ResponseCache:
             conn.commit()
             logger.info("Cached response successfully under key %s", key)
         except Exception as e:
+            self.error_count += 1
             logger.warning("Error writing to query cache: %s", e)
 
     def clear(self) -> None:
@@ -123,6 +131,7 @@ class ResponseCache:
             conn.commit()
             logger.info("Query cache cleared")
         except Exception as e:
+            self.error_count += 1
             logger.error("Failed to clear query cache: %s", e)
 
     async def get_async(self, prompt: str, schema_name: str, model: str) -> dict[str, Any] | None:

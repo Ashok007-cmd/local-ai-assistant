@@ -24,6 +24,10 @@ class RAGIndex:
 
     def __init__(self, db_path: str = settings.RAG_DB_PATH):
         self.db_path = Path(db_path)
+        # See src/cache.py's ResponseCache.error_count — same rationale (SECURITY.md F-7):
+        # DB failures degrade to empty results rather than crashing requests, but a
+        # rising count means something's actually wrong; surfaced via GET /health.
+        self.error_count = 0
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -53,6 +57,7 @@ class RAGIndex:
                 )
                 conn.commit()
         except Exception as e:
+            self.error_count += 1
             logger.error("Failed to initialize SQLite FTS5 RAG index at %s: %s", self.db_path, e)
 
     def index_document(self, title: str, content: str) -> None:
@@ -68,6 +73,7 @@ class RAGIndex:
             conn.commit()
             logger.info("Indexed document: %s", title)
         except Exception as e:
+            self.error_count += 1
             logger.error("Error indexing document %s: %s", title, e)
 
     def search_documents(self, query: str) -> list[dict[str, Any]]:
@@ -108,6 +114,7 @@ class RAGIndex:
                 })
             return results
         except Exception as e:
+            self.error_count += 1
             logger.error("Error searching FTS5 index for '%s': %s", query, e)
             return []
 
@@ -119,6 +126,7 @@ class RAGIndex:
             conn.commit()
             logger.info("FTS5 index cleared")
         except Exception as e:
+            self.error_count += 1
             logger.error("Failed to clear FTS5 index: %s", e)
 
     def get_count(self) -> int:
@@ -128,7 +136,9 @@ class RAGIndex:
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(*) FROM rag_documents_fts")
             return cursor.fetchone()[0]
-        except Exception:
+        except Exception as e:
+            self.error_count += 1
+            logger.error("Error counting RAG documents: %s", e)
             return 0
 
     # Async counterparts using asyncio.to_thread

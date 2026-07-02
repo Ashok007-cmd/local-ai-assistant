@@ -85,6 +85,8 @@ class HealthResponse(BaseModel):
     status: str
     models_available: list[str]
     rate_limit_rpm: int
+    cache_errors: int
+    rag_errors: int
 
 
 @asynccontextmanager
@@ -107,7 +109,7 @@ app = FastAPI(
         "- SQLite WAL cache eliminates repeat inference cost.\n\n"
         "Interactive docs: [/docs](/docs) · OpenAPI spec: [/openapi.json](/openapi.json)"
     ),
-    version="1.2.2",
+    version="1.2.3",
     contact={
         "name": "Ashok Kumar",
         "url": "https://github.com/Ashok007-cmd/local-ai-assistant",
@@ -271,6 +273,8 @@ async def get_benchmarks():
 async def health_check():
     """Verify Ollama/Gemini connectivity and list available models."""
     from src.assistant import get_async_client
+    from src.cache import response_cache
+    from src.rag_index import rag_index
 
     models: list[str] = []
     gemini_active = bool(settings.GEMINI_API_KEY)
@@ -298,4 +302,6 @@ async def health_check():
         status="ok",
         models_available=unique_models,
         rate_limit_rpm=settings.RATE_LIMIT_RPM,
+        cache_errors=response_cache.error_count,
+        rag_errors=rag_index.error_count,
     )

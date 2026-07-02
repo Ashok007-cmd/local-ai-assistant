@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and
 
 ---
 
+## [1.2.3] — 2026-07-03
+
+Closes F-7 from [SECURITY.md](SECURITY.md) — the last open finding from the audit. **All 10 findings are now fixed.**
+
+### Security
+- **Cache/RAG failures are now observable, not just silent** — `ResponseCache` and `RAGIndex` still degrade gracefully on any DB failure (a cache/index error becomes a miss/empty result, never a crashed request — that behavior is intentional and unchanged), but every except-block now increments a new `error_count` on the instance
+- **`GET /health` reports `cache_errors` and `rag_errors`** so a rising failure rate (corrupt DB, disk full, permissions) is visible without digging through logs
+
+### Added
+- 3 new regression tests: cache and RAG error counting on a simulated DB failure, and `/health` exposing both counts
+
+### Changed
+- Version bumped to `1.2.3`
+
+---
+
 ## [1.2.2] — 2026-07-03
 
 Closes F-9 from [SECURITY.md](SECURITY.md). Only F-7 (broad `except Exception` in cache/RAG paths — a deliberate cache-miss-fallback design choice) remains open.

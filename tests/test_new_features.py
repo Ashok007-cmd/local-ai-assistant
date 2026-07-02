@@ -472,3 +472,42 @@ class TestRateLimitExemptions:
         assert _is_rate_limit_exempt("/analyze-resume") is False
 
 
+class TestErrorObservability:
+    """Regression tests for SECURITY.md F-7: cache/RAG DB failures still degrade
+    gracefully (miss/empty result) rather than crashing a request, but are now
+    counted so a rising error rate is visible instead of silent."""
+
+    def test_cache_records_error_count_on_failure(self):
+        from src.cache import response_cache
+        before = response_cache.error_count
+        with patch.object(response_cache, "_get_conn", side_effect=RuntimeError("simulated DB failure")):
+            result = response_cache.get("some prompt", "SomeSchema", "some-model")
+        assert result is None
+        assert response_cache.error_count == before + 1
+
+    def test_rag_index_records_error_count_on_failure(self):
+        from src.rag_index import rag_index
+        before = rag_index.error_count
+        with patch.object(rag_index, "_get_conn", side_effect=RuntimeError("simulated DB failure")):
+            results = rag_index.search_documents("some query")
+        assert results == []
+        assert rag_index.error_count == before + 1
+
+    def test_health_exposes_cache_and_rag_error_counts(self):
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {"models": [{"name": "llama3.2:3b"}]}
+
+        mock_async_client = AsyncMock()
+        mock_async_client.get = AsyncMock(return_value=mock_resp)
+
+        client = TestClient(app)
+        with patch("src.assistant.get_async_client", return_value=mock_async_client):
+            response = client.get("/health")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data["cache_errors"], int)
+        assert isinstance(data["rag_errors"], int)
+
+
